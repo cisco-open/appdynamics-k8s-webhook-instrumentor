@@ -30,12 +30,3 @@ If using the script, deploy config map with configuration per example
 
 
 
-
-```
-cd existing_repo
-git remote add origin https://gitlab.com/Divis/appdynamics-k8s-webhook-instrumentor.git
-git branch -M main
-git push -uf origin main
-```
-
-
