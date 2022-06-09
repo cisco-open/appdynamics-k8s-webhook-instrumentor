@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: webhook-instrumentor-config
+  namespace: {{ .Release.Namespace }}
+data:
+  controller: | {{ printf "\n" }}
+    {{- toYaml .Values.appdController | indent 4 }}
+  instrumentation: | {{ printf "\n" }}
+    {{- toYaml .Values.instrumentationRules | indent 4 }}
+  injectionTemplates: | {{ printf "\n" }}
+    {{- toYaml .Values.instrumentationTemplates | indent 4 }}

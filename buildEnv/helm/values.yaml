@@ -3,6 +3,7 @@ namespace: webhook1
 serviceaccount: webhook-instrumentor
 deploymentName: webhook-server
 webhookName: webhook-appd
+replicas: 2
 
 service:
   type: ClusterIP
@@ -11,3 +12,47 @@ service:
 image:
   image: docker.io/chrlic/webhook-test:latest
   pullPolicy: Always
+
+appdController:
+  host: ceer.saas.appdynamics.com
+  port: "443"
+  isSecure: true
+  accountName: ceer
+  accessKey: "3gnmajormowm"
+
+instrumentationTemplates:
+  - name: Java_Default
+    injectionRules:
+      technology: java
+      image: appdynamics/java-agent:latest
+      javaEnvVar: JAVA_TOOL_OPTIONS
+      applicationNameSource: label
+      applicationNameLabel: app
+      tierNameSource: auto
+
+instrumentationRules:
+  - name: test1
+    matchRules:
+      namespaceRegex: .*
+      labels:
+      - label1: veslo
+      - language: java
+      annotations:
+      - annot1: .*
+      podNameRegex: .*
+    injectionRules:
+      technology: java
+      image: appdynamics/java-agent:latest
+      javaEnvVar: _JAVA_OPTIONS
+  - name: test2
+    matchRules:
+      namespaceRegex: .*
+      labels:
+      - label1: veslo
+      - language: java
+      podNameRegex: .*
+    injectionRules:
+      template: Java_Default
+      technology: java
+      image: appdynamics/java-agent:latest
+      javaEnvVar: _JAVA_OPTIONS
