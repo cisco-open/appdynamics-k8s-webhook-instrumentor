@@ -2,7 +2,7 @@
 
 cd ..
 
-docker build -f buildEnv/Dockerfile . -t chrlic/webhook-test:latest
+docker build -f buildEnv/Dockerfile . -t chrlic/appd-webhook-instrumentor:latest
 
-docker push chrlic/webhook-test:latest
+docker push chrlic/appd-webhook-instrumentor:latest
 

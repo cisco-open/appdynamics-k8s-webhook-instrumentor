@@ -1,16 +1,27 @@
 
-namespace: webhook1
 serviceaccount: webhook-instrumentor
 deploymentName: webhook-server
 webhookName: webhook-appd
-replicas: 2
+# namespacesEnabled is optional list of namespaces, where webhook would be applied. 
+# If missing, all namespaces will be enabled, except kubernetes system namespaces
+# namespacesEnabled:
+# - ns1
+# - ns2
+# namespacesDisabled is optional list of namespaces, where webhook would not be applied. 
+# If missing, all namespaces will be enabled, except kubernetes system namespaces 
+# (and namespace where the webook itself is running)
+# namespacesDisabled:
+# - ns3
+# number of replicas for webhook server
+replicas: 1
 
+# service type and port for webhook server
 service:
   type: ClusterIP
   port: 443
 
 image:
-  image: docker.io/chrlic/webhook-test:latest
+  image: docker.io/chrlic/appd-webhook-instrumentor:latest
   pullPolicy: Always
 
 appdController:
@@ -27,7 +38,7 @@ instrumentationTemplates:
       image: appdynamics/java-agent:latest
       javaEnvVar: JAVA_TOOL_OPTIONS
       applicationNameSource: label
-      applicationNameLabel: app
+      applicationNameLabel: appdApp
       tierNameSource: auto
 
 instrumentationRules:
@@ -35,7 +46,7 @@ instrumentationRules:
     matchRules:
       namespaceRegex: .*
       labels:
-      - label1: veslo
+      - matchLabel: test1
       - language: java
       annotations:
       - annot1: .*
@@ -48,7 +59,7 @@ instrumentationRules:
     matchRules:
       namespaceRegex: .*
       labels:
-      - label1: veslo
+      - appdInstr: do
       - language: java
       podNameRegex: .*
     injectionRules:
