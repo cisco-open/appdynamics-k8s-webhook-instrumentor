@@ -53,7 +53,13 @@ instrumentationTemplates:
     injectionRules:
       technology: dotnetcore
       image: appdynamics/dotnet-core-agent:22.5.1
-      javaEnvVar: JAVA_TOOL_OPTIONS
+      applicationNameSource: label
+      applicationNameLabel: appdApp
+      tierNameSource: auto
+  - name: Nodejs_Default
+    injectionRules:
+      technology: dotnetcore
+      image: appdynamics/nodejs-agent:22.5.0-16-stretch-slim
       applicationNameSource: label
       applicationNameLabel: appdApp
       tierNameSource: auto
@@ -93,4 +99,13 @@ instrumentationRules:
       podNameRegex: .*
     injectionRules:
       template: Dotnet_Default
+  - name: nodejs1
+    matchRules:
+      namespaceRegex: .*
+      labels:
+      - appdInstr: do
+      - language: nodejs
+      podNameRegex: .*
+    injectionRules:
+      template: Nodejs_Default
 
