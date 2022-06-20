@@ -1,0 +1,45 @@
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: r
+  name: myfirstapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: myfirstapp
+  template:
+    metadata:
+      annotations:
+        test: testval
+      labels:
+        app: myfirstapp
+        appdApp: MD-instr-wh
+        appdInstr: do
+        language: dotnetcore
+    spec:
+      containers:
+      - name: downstream
+        image: chrlic/sample-dotnet-app:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 7032
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: r
+  name: myfirstapp
+  labels:
+    run: myfirstapp
+spec:
+  ports:
+  - port: 8484
+    targetPort: 7032
+    protocol: TCP
+  selector:
+    app: myfirstapp
+  type: LoadBalancer

@@ -66,6 +66,19 @@ func addDotnetEnvVar(pod corev1.Pod, instrRules *InstrumentationRule, containerI
 	patchOps = append(patchOps, addContainerEnvVar("CORECLR_PROFILER", "{57e1aa68-2229-41aa-9931-a6e93bbc64d8}", 0))
 	patchOps = append(patchOps, addContainerEnvVar("CORECLR_PROFILER_PATH", "/opt/appdynamics-dotnetcore/libappdprofiler.so", 0))
 	patchOps = append(patchOps, addContainerEnvVar("CORECLR_ENABLE_PROFILING", "1", 0))
+	patchOps = append(patchOps, addContainerEnvVar("APPDYNAMICS_AGENT_REUSE_NODE_NAME", "true", 0))
+
+	if config.ControllerConfig.UseProxy {
+		patchOps = append(patchOps, addContainerEnvVar("APPDYNAMICS_PROXY_HOST_NAME", config.ControllerConfig.ProxyHost, 0))
+		patchOps = append(patchOps, addContainerEnvVar("APPDYNAMICS_PROXY_PORT", config.ControllerConfig.ProxyPort, 0))
+		if config.ControllerConfig.ProxyUser != "" {
+			patchOps = append(patchOps, addContainerEnvVar("APPDYNAMICS_PROXY_AUTH_NAME", config.ControllerConfig.ProxyUser, 0))
+			patchOps = append(patchOps, addContainerEnvVar("APPDYNAMICS_PROXY_AUTH_PASSWORD", config.ControllerConfig.ProxyPassword, 0))
+		}
+		if config.ControllerConfig.ProxyDomain != "" {
+			patchOps = append(patchOps, addContainerEnvVar("APPDYNAMICS_PROXY_AUTH_DOMAIN", config.ControllerConfig.ProxyDomain, 0))
+		}
+	}
 
 	return patchOps
 }

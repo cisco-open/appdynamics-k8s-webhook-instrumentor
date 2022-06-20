@@ -49,6 +49,14 @@ instrumentationTemplates:
       applicationNameSource: label
       applicationNameLabel: appdApp
       tierNameSource: auto
+  - name: Dotnet_Default
+    injectionRules:
+      technology: dotnetcore
+      image: appdynamics/dotnet-core-agent:22.5.1
+      javaEnvVar: JAVA_TOOL_OPTIONS
+      applicationNameSource: label
+      applicationNameLabel: appdApp
+      tierNameSource: auto
 
 instrumentationRules:
   - name: test1
@@ -76,3 +84,13 @@ instrumentationRules:
       technology: java
       image: appdynamics/java-agent:latest
       javaEnvVar: _JAVA_OPTIONS
+  - name: dotnet1
+    matchRules:
+      namespaceRegex: .*
+      labels:
+      - appdInstr: do
+      - language: dotnetcore
+      podNameRegex: .*
+    injectionRules:
+      template: Dotnet_Default
+
