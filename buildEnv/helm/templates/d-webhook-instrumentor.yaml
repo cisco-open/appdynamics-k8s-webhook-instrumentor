@@ -16,9 +16,6 @@ spec:
         app: {{ .Values.deploymentName }}
     spec:
       serviceAccountName: {{ .Values.serviceaccount }}
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 1234
       containers:
       - name: {{ .Values.deploymentName }}
         image: {{ .Values.image.image }}
@@ -26,6 +23,13 @@ spec:
         ports:
         - containerPort: 8443
           name: webhook-api
+        resources:
+          limits:
+            cpu: "1"
+            memory: 1Gi
+          requests:
+            cpu: 250m
+            memory: 200Mi
         volumeMounts:
         - name: {{ template "webhook-instrumentor.name" . }}-certs
           mountPath: /run/secrets/tls

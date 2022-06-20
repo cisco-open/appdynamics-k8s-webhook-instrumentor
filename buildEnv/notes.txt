@@ -1,2 +1,0 @@
-helm install --namespace=wht wht . 
-helm uninstall --namespace=wht wht 

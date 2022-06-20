@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 func instrument(pod corev1.Pod, instrRule *InstrumentationRule) ([]patchOperation, error) {
@@ -125,29 +124,6 @@ func addContainerEnvVar(name string, value string, containerIdx int) patchOperat
 	}
 }
 
-func addJavaEnvVar(pod corev1.Pod, instrRules *InstrumentationRule, containerIdx int) patchOperation {
-	return patchOperation{
-		Op:   "add",
-		Path: fmt.Sprintf("/spec/containers/%d/env/-", containerIdx),
-		Value: corev1.EnvVar{
-			Name:  instrRules.InjectionRules.JavaEnvVar,
-			Value: getJavaOptions(pod, instrRules),
-		},
-	}
-}
-
-func getJavaOptions(pod corev1.Pod, instrRules *InstrumentationRule) string {
-	javaOpts := " "
-
-	javaOpts += "-Dappdynamics.agent.accountAccessKey=$(APPDYNAMICS_AGENT_ACCOUNT_ACCESS_KEY) "
-	javaOpts += "-Dappdynamics.agent.reuse.nodeName=true "
-	javaOpts += "-Dappdynamics.socket.collection.bci.enable=true "
-	javaOpts += "-javaagent:/opt/appdynamics-java/javaagent.jar "
-	javaOpts += instrRules.InjectionRules.JavaCustomConfig
-
-	return javaOpts
-}
-
 func addNetvizEnvVars(pod corev1.Pod, instrRules *InstrumentationRule, containerIdx int) []patchOperation {
 	patchOps := []patchOperation{}
 
@@ -196,68 +172,6 @@ func addControllerEnvVars(containerIdx int) []patchOperation {
 	patchOps = append(patchOps, addContainerEnvVar("APPDYNAMICS_CONTROLLER_SSL_ENABLED", strconv.FormatBool(config.ControllerConfig.IsSecure), 0))
 	patchOps = append(patchOps, addContainerEnvVar("APPDYNAMICS_AGENT_ACCOUNT_NAME", config.ControllerConfig.AccountName, 0))
 
-	return patchOps
-}
-
-func addJavaAgentVolumeMount(pod corev1.Pod, instrRules *InstrumentationRule, containerIdx int) []patchOperation {
-	patchOps := []patchOperation{}
-	patchOps = append(patchOps, patchOperation{
-		Op:   "add",
-		Path: fmt.Sprintf("/spec/containers/%d/volumeMounts/-", containerIdx),
-		Value: corev1.VolumeMount{
-			MountPath: "/opt/appdynamics-java", //TODO
-			Name:      "appd-agent-repo-java",  //TODO
-		},
-	})
-	return patchOps
-}
-
-func addJavaAgentVolume(pod corev1.Pod, instrRules *InstrumentationRule) []patchOperation {
-	patchOps := []patchOperation{}
-	patchOps = append(patchOps, patchOperation{
-		Op:   "add",
-		Path: "/spec/volumes/-",
-		Value: corev1.Volume{
-			Name: "appd-agent-repo-java", //TODO
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			},
-		},
-	})
-	return patchOps
-}
-
-func addJavaAgentInitContainer(pod corev1.Pod, instrRules *InstrumentationRule) []patchOperation {
-	patchOps := []patchOperation{}
-	limCPU, _ := resource.ParseQuantity("200m")
-	limMem, _ := resource.ParseQuantity("75M")
-	reqCPU, _ := resource.ParseQuantity(instrRules.InjectionRules.ResourceReservation.CPU)
-	reqMem, _ := resource.ParseQuantity(instrRules.InjectionRules.ResourceReservation.Memory)
-
-	patchOps = append(patchOps, patchOperation{
-		Op:   "add",
-		Path: "/spec/initContainers/-",
-		Value: corev1.Container{
-			Name:            "appd-agent-attach-java", //TODO
-			Image:           instrRules.InjectionRules.Image,
-			Command:         []string{"cp", "-r", "/opt/appdynamics/.", "/opt/appdynamics-java"},
-			ImagePullPolicy: corev1.PullAlways, //TODO
-			Resources: corev1.ResourceRequirements{
-				Limits: corev1.ResourceList{
-					corev1.ResourceCPU:    limCPU,
-					corev1.ResourceMemory: limMem,
-				},
-				Requests: corev1.ResourceList{
-					corev1.ResourceCPU:    reqCPU,
-					corev1.ResourceMemory: reqMem,
-				},
-			},
-			VolumeMounts: []corev1.VolumeMount{{
-				MountPath: "/opt/appdynamics-java", //TODO
-				Name:      "appd-agent-repo-java",  //TODO
-			}},
-		},
-	})
 	return patchOps
 }
 

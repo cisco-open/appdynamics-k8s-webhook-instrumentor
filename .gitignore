@@ -1,3 +1,5 @@
 /.idea/
+buildEnv/notes
 buildEnv/helm/values.yaml
 buildEnv/helm/values-cez.yaml
+
