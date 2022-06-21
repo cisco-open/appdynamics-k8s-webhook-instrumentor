@@ -1,4 +1,4 @@
-{{- $ca := genCA "webhook-change-group-webhook-ca" 3650 }}
+{{- $ca := genCA "webhook-change-group-webhook-ca" (.Values.certValidityDays | int) }}
 {{- $altNames := list ( printf "%s.%s" (include "webhook-instrumentor.name" .) .Release.Namespace ) ( printf "%s.%s.svc" (include "webhook-instrumentor.name" .) .Release.Namespace ) -}}
 {{- $cert := genSignedCert ( include "webhook-instrumentor.name" . ) nil $altNames 365 $ca -}}
 
