@@ -3,6 +3,10 @@ kind: Service
 metadata:
   name: {{ ( include "webhook-instrumentor.name" . ) }}
   namespace: {{ .Release.Namespace }}
+  {{ if and ( .Values.useServiceCAonOCP ) ( .Capabilities.APIVersions.Has "apps.openshift.io/v1/DeploymentConfig") }}
+  annotations:
+    service.beta.openshift.io/serving-cert-secret-name: {{ template "webhook-instrumentor.name" . }}-certs
+  {{ end }}
 spec:
   selector:
     app: {{ .Values.deploymentName }}

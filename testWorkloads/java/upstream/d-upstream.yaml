@@ -30,7 +30,13 @@ spec:
         env:
         - name: DOWNSTREAM_HTTP_URL
           value: http://downstream.r.svc.cluster.local:8282/downstream/hello
-
+        resources:
+          limits:
+            cpu: "1"
+            memory: 500Mi
+          requests:
+            cpu: 250m
+            memory: 100Mi
 ---
 
 apiVersion: v1

@@ -25,6 +25,22 @@ spec:
         imagePullPolicy: Always
         ports:
         - containerPort: 8000
+        resources:
+          limits:
+            cpu: "1"
+            memory: 500Mi
+          requests:
+            cpu: 250m
+            memory: 100Mi
+        env:
+        - name: TEST_ENV1
+          value: fff
+        - name: TEST_ENV2
+          value: |
+            ahoj:
+              veslo: dvevesla
+        - name: TEST_ENV3
+          value: ggg
 
 ---
 
