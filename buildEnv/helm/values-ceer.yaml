@@ -196,6 +196,17 @@ instrumentationTemplates:
       applicationNameSource: label
       applicationNameLabel: appdApp
       tierNameSource: auto
+  - name: Java_Otel
+    injectionRules:
+      # technology = java | dotnetcore | nodejs
+      # provider = appd | otel | telescope - appd is default if missing
+      technology: java/otel
+      image: chrlic/opentelemetry-java-agent:latest
+      imagePullPolicy: Always
+      javaEnvVar: JAVA_TOOL_OPTIONS
+      applicationNameSource: label
+      applicationNameLabel: appdApp
+      tierNameSource: auto
 
 instrumentationRules:
   - name: test1
@@ -232,9 +243,7 @@ instrumentationRules:
       - language: java
       podNameRegex: .*
     injectionRules:
-      template: Java_Default
-      technology: java
-      image: appdynamics/java-agent:latest
+      template: Java_Otel
       javaEnvVar: _JAVA_OPTIONS
       # optional otelNativeAgent: true -> assume native otel image use, no AppD native feed
       openTelemetryCollector: deployment-hybrid-agent-default
