@@ -1,32 +1,44 @@
 # AppDynamics K8S Webhook Instrumentor
 
-This project provides K8S webhook, which, by pre-set rules, auto-instruments Pods at their creation time with AppDynamics agent. 
+This project provides K8S mutating webhook, which, by pre-set rules, auto-instruments pods at their creation time with AppDynamics or OpenTelemetry agents. 
 
 ## Supported Technologies
 
+AppDynamics agents:
 - Java
-- .NET Core (in progress)
-- Node.js (in progress)
+- .NET Core 
+- Node.js 
 - Apache (in progress)
+
+AppDynamics agents in Hybrid mode (OpenTelemetry):
+- Java
+
+OpenTelemetry agents:
+- Java
+- Node.js (experimental)
+
+Cisco Telescope:
+- Java (in progress)
+- Node.js (in progress)
 
 ## How to install?
 
-Preferably, use the helm chart
+User helm:
 ```
-helm install --namespace=<namespace> <chart-name> .
+helm install --namespace=<namespace> <chart-name> . --values=<values-file>
 ```
 
-or use
-```
-./deploy.sh
-```
-and change it per your needs
+to upgrade after values change:
+- on OpenShift, you can use `helm upgrade`
+- on Kubernetes, use `helm delete <chart-name>` `helm install ...` commands for the time being
 
 ## How to configure?
 
 If using helm, modify values.yaml for helm chart parameters
 
-If using the script, deploy config map with configuration per example 
+See `values-sample.yaml` for inspiration - doc will be provided later.
+
+
 
 
 
