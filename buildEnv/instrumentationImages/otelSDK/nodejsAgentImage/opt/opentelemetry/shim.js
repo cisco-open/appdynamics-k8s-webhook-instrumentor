@@ -1,17 +1,5 @@
-const traceProvider = new NodeTracerProvider({
-  resource: Resource(),
-});
-const collectorOptions = {
-  url: 'https://production.cisco-udp.com/trace-collector', ////process.env.OTEL_EXPORTER_OTLP_ENDPOINT
-  headers: {
-    authorization: 'Bearer <Your Telescope Token>', //process.env.TELESCOPE_TOKEN - this not needed
-  },
-};
-const httpExporter = new HTTPTraceExporter(collectorOptions);
-traceProvider.addSpanProcessor(new BatchSpanProcessor(httpExporter));
-
-/*
 'use strict'
+
 
 const process = require('process');
 const opentelemetry = require('@opentelemetry/sdk-node');
@@ -20,14 +8,22 @@ const { ConsoleSpanExporter } = require('@opentelemetry/sdk-trace-base');
 const { Resource } = require('@opentelemetry/resources');
 const { SemanticResourceAttributes } = require('@opentelemetry/semantic-conventions');
 
+const { OTLPTraceExporter } = require('@opentelemetry/exporter-trace-otlp-http');
+
+const exporter = new OTLPTraceExporter({
+  // optional - url default value is http://localhost:4318/v1/traces
+  url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT + "/v1/traces",
+  // optional - collection of custom headers to be sent with each request, empty by default
+  headers: {}, 
+});
+
 // configure the SDK to export telemetry data to the console
 // enable all auto-instrumentations from the meta package
-const traceExporter = new ConsoleSpanExporter();
 const sdk = new opentelemetry.NodeSDK({
   resource: new Resource({
     [SemanticResourceAttributes.SERVICE_NAME]: 'my-service',
   }),
-  traceExporter,
+  exporter,
   instrumentations: [getNodeAutoInstrumentations()]
 });
 
@@ -44,21 +40,3 @@ process.on('SIGTERM', () => {
     .catch((error) => console.log('Error terminating tracing', error))
     .finally(() => process.exit(0));
 });
-
-
-
-
-
-
-
-
-const { OTLPTraceExporter } = require('@opentelemetry/exporter-trace-otlp-http');
-
-const exporter = new OTLPTraceExporter({
-  // optional - url default value is http://localhost:4318/v1/traces
-  url: '<your-collector-endpoint>/v1/traces',
-
-  // optional - collection of custom headers to be sent with each request, empty by default
-  headers: {}, 
-});
-*/

@@ -83,6 +83,8 @@ type AppdCloudConfig struct {
 }
 
 type TelescopeConfig struct {
+	TracesEndpoint string `json:"traces_endpoint,omitempty" yaml:"traces_endpoint,omitempty"`
+	Token          string `json:"token,omitempty" yaml:"token,omitempty"`
 }
 
 type MatchRules struct {
@@ -345,6 +347,8 @@ func updateConfig(obj interface{}) {
 	defer config.mutex.Unlock()
 	config.ControllerConfig = controllerConfig
 	config.InstrumentationConfig = instrumentationConfig
+	config.TelescopeConfig = telescopeConfig
+	config.AppdCloudConfig = appdCloudConfig
 }
 
 //apply injection rules defaults
