@@ -8,6 +8,7 @@ RUN npm install \
   @opentelemetry/api \
   @opentelemetry/auto-instrumentations-node \
   @opentelemetry/exporter-trace-otlp-http \
-  @opentelemetry/semantic-conventions
+  @opentelemetry/semantic-conventions \
+  process
 
 CMD ["cat", "Just delivering the Opentelemetry Node.js agent"]
