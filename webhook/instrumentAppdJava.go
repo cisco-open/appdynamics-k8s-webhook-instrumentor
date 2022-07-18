@@ -1,13 +1,30 @@
+/*
+Copyright (c) 2022 Martin Divis.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package main
 
 import (
 	"fmt"
+	"log"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
-func javaInstrumentation(pod corev1.Pod, instrRule *InstrumentationRule) []patchOperation {
+func javaAppdInstrumentation(pod corev1.Pod, instrRule *InstrumentationRule) []patchOperation {
 	patchOps := []patchOperation{}
 
 	if len(pod.Spec.Containers) > 0 {
@@ -57,6 +74,17 @@ func javaInstrumentation(pod corev1.Pod, instrRule *InstrumentationRule) []patch
 
 	patchOps = append(patchOps, addJavaAgentVolume(pod, instrRule)...)
 
+	if instrRule.InjectionRules.OpenTelemetryCollector != "" {
+		otelCollConfig, found := otelCollsConfig[instrRule.InjectionRules.OpenTelemetryCollector]
+		if !found {
+			log.Printf("Cannot find OTel collector definition %s\n", instrRule.InjectionRules.OpenTelemetryCollector)
+		} else {
+			if otelCollConfig.Mode == "sidecar" {
+				patchOps = append(patchOps, addOtelCollSidecar(pod, instrRule, 0)...)
+			}
+		}
+	}
+
 	return patchOps
 }
 
@@ -105,7 +133,24 @@ func getJavaOptions(pod corev1.Pod, instrRules *InstrumentationRule) string {
 	}
 	javaOpts += "-Dappdynamics.socket.collection.bci.enable=true "
 	javaOpts += "-javaagent:/opt/appdynamics-java/javaagent.jar "
-	javaOpts += instrRules.InjectionRules.JavaCustomConfig
+	javaOpts += instrRules.InjectionRules.JavaCustomConfig + " "
+
+	// OpenTelemetry Java Options for AppD hybrid agent
+	if instrRules.InjectionRules.OpenTelemetryCollector != "" {
+		otelCollConfig, found := otelCollsConfig[instrRules.InjectionRules.OpenTelemetryCollector]
+		if !found {
+			log.Printf("Cannot find OTel collector definition %s\n", instrRules.InjectionRules.OpenTelemetryCollector)
+		} else {
+			javaOpts += "-Dappdynamics.opentelemetry.enabled=true "
+			javaOpts += fmt.Sprintf("-Dotel.resource.attributes=service.name=%s,service.namespace=%s ", getTierName(pod, instrRules), getApplicationName(pod, instrRules))
+			javaOpts += "-Dotel.traces.exporter=otlp,logging "
+			if otelCollConfig.Mode == "sidecar" {
+				javaOpts += "-Dotel.exporter.otlp.traces.endpoint=http://localhost:4317 "
+			} else if (otelCollConfig.Mode == "deployment") || (otelCollConfig.Mode == "external") {
+				javaOpts += fmt.Sprintf("-Dotel.exporter.otlp.traces.endpoint=http://%s:4317 ", otelCollConfig.ServiceName)
+			}
+		}
+	}
 
 	return javaOpts
 }

@@ -15,8 +15,8 @@ spec:
         test: testval
       labels:
         app: downstream
-        appdApp: MD-instr-wh
         appdInstr: do
+        appdApp: MD-instr-wh
         language: java
     spec:
       containers:
