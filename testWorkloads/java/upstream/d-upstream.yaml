@@ -17,8 +17,8 @@ spec:
     metadata:
       labels:
         app: upstream
-        appdApp: MD-instr-wh
         appdInstr: do
+        appdApp: MD-instr-wh
         language: java
     spec:
       containers:
