@@ -12,22 +12,6 @@ This project provides K8S mutating webhook, which, by pre-set rules, auto-instru
 | Apache   | in planning        | N/A                | in planning   | N/A             |
 | Go       | no                 | no                 | in planning   | N/A.            |
 
-AppDynamics agents:
-- Java
-- .NET Core 
-- Node.js 
-- Apache (in progress)
-
-AppDynamics agents in Hybrid mode (OpenTelemetry):
-- Java
-
-OpenTelemetry agents:
-- Java
-- Node.js (experimental)
-
-Cisco Telescope:
-- Java (in progress)
-- Node.js (in progress)
 
 ## How to install?
 
