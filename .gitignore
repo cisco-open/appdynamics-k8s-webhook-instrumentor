@@ -4,6 +4,9 @@ buildEnv/helm/values.yaml
 buildEnv/helm/values-cez.yaml
 
 testWorkloads/otelcol
+testWorkloads/playground
 buildEnv/helm/values-se-lab.yaml
 buildEnv/helm/values-test.yaml
 buildEnv/helm/values-ceer1.yaml
+buildEnv/helm/values-ceer.yaml
+

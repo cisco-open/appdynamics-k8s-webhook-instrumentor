@@ -1,31 +1,41 @@
-'use strict'
+// tracing.js
 
+'use strict'
 
 const process = require('process');
 const opentelemetry = require('@opentelemetry/sdk-node');
 const { getNodeAutoInstrumentations } = require('@opentelemetry/auto-instrumentations-node');
-const { ConsoleSpanExporter } = require('@opentelemetry/sdk-trace-base');
+// const { ConsoleSpanExporter } = require('@opentelemetry/sdk-trace-base');
 const { Resource } = require('@opentelemetry/resources');
 const { SemanticResourceAttributes } = require('@opentelemetry/semantic-conventions');
+// const { OTLPTraceExporter } = require('@opentelemetry/exporter-trace-otlp-http');
+const { OTLPTraceExporter } = require('@opentelemetry/exporter-trace-otlp-grpc');
+// const { JaegerExporter } = require('@opentelemetry/exporter-jaeger');
+const { diag, DiagConsoleLogger, DiagLogLevel } = require('@opentelemetry/api');
 
-const { OTLPTraceExporter } = require('@opentelemetry/exporter-trace-otlp-http');
+// For troubleshooting, set the log level to DiagLogLevel.DEBUG
+diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.DEBUG);
 
-const exporter = new OTLPTraceExporter({
-  // optional - url default value is http://localhost:4318/v1/traces
-  url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT + "/v1/traces",
-  // optional - collection of custom headers to be sent with each request, empty by default
-  headers: {}, 
+const otlpExporter = new OTLPTraceExporter({
+  url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT
 });
+console.log(otlpExporter)
 
 // configure the SDK to export telemetry data to the console
 // enable all auto-instrumentations from the meta package
+// const traceExporter = new ConsoleSpanExporter();
+// console.log(traceExporter)
 const sdk = new opentelemetry.NodeSDK({
   resource: new Resource({
-    [SemanticResourceAttributes.SERVICE_NAME]: 'my-service',
+    [SemanticResourceAttributes.SERVICE_NAME]: process.env.OTEL_SERVICE_NAME,
+    [SemanticResourceAttributes.SERVICE_NAMESPACE]: process.env.OTEL_SERVICE_NAMESPACE,
   }),
-  exporter,
-  instrumentations: [getNodeAutoInstrumentations()]
+  traceExporter: otlpExporter,
+  serviceName: process.env.OTEL_SERVICE_NAME,
+  instrumentations: [getNodeAutoInstrumentations()],
+  autoDetectResources: true
 });
+console.log(sdk)
 
 // initialize the SDK and register with the OpenTelemetry API
 // this enables the API to record telemetry

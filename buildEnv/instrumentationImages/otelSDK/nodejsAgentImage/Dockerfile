@@ -8,6 +8,7 @@ RUN npm install \
   @opentelemetry/api \
   @opentelemetry/auto-instrumentations-node \
   @opentelemetry/exporter-trace-otlp-http \
+  @opentelemetry/exporter-trace-otlp-grpc \
   @opentelemetry/semantic-conventions \
   process
 
