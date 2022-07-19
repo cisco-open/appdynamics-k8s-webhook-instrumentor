@@ -2,7 +2,15 @@
 
 This project provides K8S mutating webhook, which, by pre-set rules, auto-instruments pods at their creation time with AppDynamics or OpenTelemetry agents. 
 
-## Supported Technologies
+## Supported Agents
+
+| Language | AppDynamics Native | AppDynamics Hybrid | OpenTelemetry | Cisco Telescope |
+| -------- | ------------------ | ------------------ | ------------- | --------------- |
+| Java     | yes                | yes                | yes           | yes (experimental) |
+| .NET (Core) | yes             | N/A                | N/A           | N/A             |
+| Node.js  | yes                | yes                | yes           | in planning     |
+| Apache   | in planning        | N/A                | in planning   | N/A             |
+| Go       | no                 | no                 | in planning   | N/A.            |
 
 AppDynamics agents:
 - Java
