@@ -6,7 +6,7 @@ This project provides K8S mutating webhook, which, by pre-set rules, auto-instru
 
 | Language | AppDynamics Native | AppDynamics Hybrid | OpenTelemetry | Cisco Telescope |
 | -------- | ------------------ | ------------------ | ------------- | --------------- |
-| Java     | yes                | yes                | yes           | yes (experimental) |
+| Java     | &#9989                | yes                | yes           | yes (experimental) |
 | .NET (Core) | yes             | N/A                | N/A           | N/A             |
 | Node.js  | yes                | in progress        | yes           | in planning     |
 | Apache   | in planning        | N/A                | in planning   | N/A             |
