@@ -1,8 +1,14 @@
 const { ciscoTracing } = require('@cisco-telescope/cisco-sdk-node');
 
 const userOptions = {
-  serviceName: process.env.TELESCOPE_SERVICE_NAME,
-  ciscoToken: process.env.TELESCOPE_TOKEN,
+  serviceName: process.env.OTEL_SERVICE_NAME,
+  serviceNamespace: process.env.OTEL_SERVICE_NAMESPACE,
+  exporters: [
+    {
+      type: 'otlp-http',
+      collectorEndpoint: process.env.OTEL_EXPORTER_OTLP_ENDPOINT,
+    },
+  ],
 };
 
 ciscoTracing.init(userOptions); // init() is an asynchronous function. Consider calling it in 'async-await' format
