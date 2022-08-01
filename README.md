@@ -12,7 +12,7 @@ This project provides K8S mutating webhook, which, by pre-set rules, auto-instru
 | Apache      | :thinking:         | :x:                     | :thinking:              | :x:                |
 | Go          | :x:                | :x:                     | :thinking:              | :x:                |
 
-*) Does not work with AppDynamics cSaaS contoller - service namespace resource attribute is not propagated
+*) Does not work OOB with AppDynamics cSaaS contoller - service namespace resource attribute is not propagated. If needed, it can be fixed in Otel Collector.
 
 ## How to install?
 
