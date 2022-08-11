@@ -20,11 +20,20 @@ spec:
         language: dotnetcore
     spec:
       containers:
-      - name: downstream
+      - name: myfirstapp
         image: chrlic/sample-dotnet-app:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 7032
+        env:
+        - name: OTEL_METRICS_EXPORTER
+          value: none
+        - name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
+          value: http://otel-coll-deployment-hybrid-agent-default.wht.svc.cluster.local:4318
+        - name: OTEL_EXPORTER_OTLP_TRACES_PROTOCOL
+          value: http/protobuf
+        - name: OTEL_DOTNET_AUTO_LOAD_TRACER_AT_STARTUP
+          value: "true"
         resources:
           limits:
             cpu: "1"

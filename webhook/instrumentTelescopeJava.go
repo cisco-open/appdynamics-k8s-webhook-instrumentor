@@ -68,6 +68,8 @@ func javaTelescopeInstrumentation(pod corev1.Pod, instrRule *InstrumentationRule
 	patchOps = append(patchOps, addContainerEnvVar("OTEL_SERVICE_NAME", getTierName(pod, instrRule), 0))
 	patchOps = append(patchOps, addContainerEnvVar("CISCO_TOKEN", config.TelescopeConfig.Token, 0))
 
+	patchOps = append(patchOps, addSpecifiedContainerEnvVars(instrRule.InjectionRules.EnvVars, 0)...)
+
 	patchOps = append(patchOps, addTelescopeJavaAgentVolumeMount(pod, instrRule, 0)...)
 
 	patchOps = append(patchOps, addTelescopeJavaAgentInitContainer(pod, instrRule)...)

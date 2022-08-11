@@ -116,6 +116,13 @@ type InjectionRules struct {
 	LogLevel                  string               `json:"logLevel,omitempty" yaml:"logLevel,omitempty"`
 	NetvizPort                string               `json:"netvizPort,omitempty" yaml:"netvizPort,omitempty"`
 	OpenTelemetryCollector    string               `json:"openTelemetryCollector,omitempty" yaml:"openTelemetryCollector,omitempty"`
+	EnvVars                   []NameValue          `json:"env,omitempty" yaml:"env,omitempty"`
+	Options                   []NameValue          `json:"options,omitempty" yaml:"options,omitempty"`
+}
+
+type NameValue struct {
+	Name  string `json:"name,omitempty" yaml:"name,omitempty"`
+	Value string `json:"value,omitempty" yaml:"value,omitempty"`
 }
 
 type ResourceReservation struct {
@@ -424,11 +431,30 @@ func applyInjectionTemplates(injectionTemplates *InjectionTemplates, instrumenta
 				injRules.ResourceReservation.Memory = applyTemplateString(injRules.ResourceReservation.Memory, injTempRules.ResourceReservation.Memory)
 			}
 			injRules.NetvizPort = applyTemplateString(injRules.NetvizPort, injTempRules.NetvizPort)
-			injRules.OpenTelemetryCollector = applyTemplateString(injRules.OpenTelemetryCollector, injRules.OpenTelemetryCollector)
+			injRules.OpenTelemetryCollector = applyTemplateString(injRules.OpenTelemetryCollector, injTempRules.OpenTelemetryCollector)
+			injRules.EnvVars = mergeNameValues(injRules.EnvVars, injTempRules.EnvVars)
+			injRules.Options = mergeNameValues(injRules.Options, injTempRules.Options)
 			///
 		}
 	}
 	return valid
+}
+
+func mergeNameValues(specific []NameValue, templated []NameValue) []NameValue {
+	merged := []NameValue{}
+	temp := map[string]string{}
+
+	for _, item := range templated {
+		temp[item.Name] = item.Value
+	}
+	for _, item := range specific {
+		temp[item.Name] = item.Value
+	}
+	for name, value := range temp {
+		merged = append(merged, NameValue{Name: name, Value: value})
+	}
+
+	return merged
 }
 
 // validate controller config

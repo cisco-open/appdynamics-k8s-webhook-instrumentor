@@ -66,6 +66,9 @@ func javaAppdInstrumentation(pod corev1.Pod, instrRule *InstrumentationRule) []p
 	if reuseNodeNames(instrRule) {
 		patchOps = append(patchOps, addContainerEnvVar("APPDYNAMICS_AGENT_REUSE_NODE_NAME_PREFIX", getTierName(pod, instrRule), 0))
 	}
+
+	patchOps = append(patchOps, addSpecifiedContainerEnvVars(instrRule.InjectionRules.EnvVars, 0)...)
+
 	patchOps = append(patchOps, addNetvizEnvVars(pod, instrRule, 0)...)
 
 	patchOps = append(patchOps, addJavaAgentVolumeMount(pod, instrRule, 0)...)

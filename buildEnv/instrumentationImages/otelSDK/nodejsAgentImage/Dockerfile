@@ -12,4 +12,6 @@ RUN npm install \
   @opentelemetry/semantic-conventions \
   process
 
+RUN chmod a+rwx /opt/opentelemetry
+
 CMD ["cat", "Just delivering the Opentelemetry Node.js agent"]
