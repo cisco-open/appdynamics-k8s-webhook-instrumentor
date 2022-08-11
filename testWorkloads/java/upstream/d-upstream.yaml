@@ -30,6 +30,10 @@ spec:
         env:
         - name: DOWNSTREAM_HTTP_URL
           value: http://downstream.r.svc.cluster.local:8282/downstream/hello
+        - name: OTEL_SERVICE_NAME
+          value: upstream
+        - name: OTEL_RESOURCE_ATTRIBUTES
+          value: service.name=upstream,service.namespace=MD-instr-wh
         resources:
           limits:
             cpu: "1"

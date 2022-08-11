@@ -63,6 +63,8 @@ func nodejsTelescopeInstrumentation(pod corev1.Pod, instrRule *InstrumentationRu
 	patchOps = append(patchOps, addContainerEnvVar("OTEL_SERVICE_NAMESPACE", getApplicationName(pod, instrRule), 0))
 	patchOps = append(patchOps, addContainerEnvVar("OTEL_SERVICE_NAME", getTierName(pod, instrRule), 0))
 
+	patchOps = append(patchOps, addSpecifiedContainerEnvVars(instrRule.InjectionRules.EnvVars, 0)...)
+
 	patchOps = append(patchOps, addTelescopeNodejsAgentVolumeMount(pod, instrRule, 0)...)
 
 	patchOps = append(patchOps, addTelescopeNodejsAgentInitContainer(pod, instrRule)...)

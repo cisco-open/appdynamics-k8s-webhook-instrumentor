@@ -63,6 +63,8 @@ func nodejsOtelInstrumentation(pod corev1.Pod, instrRule *InstrumentationRule) [
 	patchOps = append(patchOps, addContainerEnvVar("OTEL_SERVICE_NAMESPACE", getApplicationName(pod, instrRule), 0))
 	patchOps = append(patchOps, addContainerEnvVar("OTEL_SERVICE_NAME", getTierName(pod, instrRule), 0))
 
+	patchOps = append(patchOps, addSpecifiedContainerEnvVars(instrRule.InjectionRules.EnvVars, 0)...)
+
 	patchOps = append(patchOps, addOtelNodejsAgentVolumeMount(pod, instrRule, 0)...)
 
 	patchOps = append(patchOps, addOtelNodejsAgentInitContainer(pod, instrRule)...)

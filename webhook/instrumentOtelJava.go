@@ -65,6 +65,8 @@ func javaOtelInstrumentation(pod corev1.Pod, instrRule *InstrumentationRule) []p
 		fmt.Sprintf("service.name=%s,service.namespace=%s", getTierName(pod, instrRule), getApplicationName(pod, instrRule)), 0))
 	patchOps = append(patchOps, addContainerEnvVar("OTEL_SERVICE_NAME", getTierName(pod, instrRule), 0))
 
+	patchOps = append(patchOps, addSpecifiedContainerEnvVars(instrRule.InjectionRules.EnvVars, 0)...)
+
 	patchOps = append(patchOps, addOtelJavaAgentVolumeMount(pod, instrRule, 0)...)
 
 	patchOps = append(patchOps, addOtelJavaAgentInitContainer(pod, instrRule)...)

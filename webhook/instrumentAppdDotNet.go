@@ -64,6 +64,8 @@ func dotnetAppdInstrumentation(pod corev1.Pod, instrRule *InstrumentationRule) [
 	patchOps = append(patchOps, addContainerEnvVar("APPDYNAMICS_AGENT_TIER_NAME", getTierName(pod, instrRule), 0))
 	patchOps = append(patchOps, addContainerEnvVar("APPDYNAMICS_AGENT_REUSE_NODE_NAME_PREFIX", getTierName(pod, instrRule), 0))
 
+	patchOps = append(patchOps, addSpecifiedContainerEnvVars(instrRule.InjectionRules.EnvVars, 0)...)
+
 	patchOps = append(patchOps, addNetvizEnvVars(pod, instrRule, 0)...)
 
 	patchOps = append(patchOps, addDotnetAgentVolumeMount(pod, instrRule, 0)...)
