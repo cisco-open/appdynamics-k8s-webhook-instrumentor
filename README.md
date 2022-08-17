@@ -5,11 +5,13 @@ This project provides K8S mutating webhook, which, by pre-set rules, auto-instru
 ## Supported Agents
 
 | Language    | AppDynamics Native | AppDynamics Hybrid      | OpenTelemetry           | Cisco Telescope    |
+| Framework   |                    |                         |                         |                    |
 | ----------- | ------------------ | ----------------------- | ----------------------- | ------------------ |
 | Java        | :white_check_mark: | :white_check_mark:      | :white_check_mark:      | :white_check_mark: |
 | .NET (Core) | :white_check_mark: | :x:                     | :building_construction: | :thinking:         |
 | Node.js     | :white_check_mark: | :building_construction: | :white_check_mark:      | :white_check_mark: *) |
-| Apache      | :thinking:         | :x:                     | :thinking:              | :x:                |
+| Apache      | :thinking:         | :x:                     | :test_tube:             | :x:                |
+| Nginx       | :x:                | :x:                     | :test_tube:             | :x:                |
 | Go          | :x:                | :x:                     | :thinking:              | :x:                |
 
 *) Does not work OOB with AppDynamics cSaaS contoller - service namespace resource attribute is not propagated. If needed, it can be fixed in Otel Collector.
