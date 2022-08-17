@@ -124,6 +124,10 @@ func otelInstrumentation(pod corev1.Pod, instrRule *InstrumentationRule) []patch
 		patchOps = append(patchOps, dotnetOtelInstrumentation(pod, instrRule)...)
 	case "nodejs":
 		patchOps = append(patchOps, nodejsOtelInstrumentation(pod, instrRule)...)
+	case "apache":
+		patchOps = append(patchOps, apacheOtelInstrumentation(pod, instrRule)...)
+	case "nginx":
+		patchOps = append(patchOps, nginxOtelInstrumentation(pod, instrRule)...)
 	default:
 		patchOps = append(patchOps, getInstrumentationStatusPatch("FAILED", "Technology for injection not specified or unknown")...)
 	}
