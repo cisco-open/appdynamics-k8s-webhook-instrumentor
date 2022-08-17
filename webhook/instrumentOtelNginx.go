@@ -25,11 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
-const OTEL_WEBSERVER_DIR = "/opt/opentelemetry-webserver"
-const OTEL_WEBSERVER_AGENT_DIR = OTEL_WEBSERVER_DIR + "/agent"
-const OTEL_WEBSERVER_CONFIG_DIR = OTEL_WEBSERVER_DIR + "/source-conf"
-
-func apacheOtelInstrumentation(pod corev1.Pod, instrRule *InstrumentationRule) []patchOperation {
+func nginxOtelInstrumentation(pod corev1.Pod, instrRule *InstrumentationRule) []patchOperation {
 	patchOps := []patchOperation{}
 
 	containerId := 0
@@ -66,16 +62,16 @@ func apacheOtelInstrumentation(pod corev1.Pod, instrRule *InstrumentationRule) [
 		}
 	}
 
-	patchOps = append(patchOps, addOtelApacheEnvVar(pod, instrRule, containerId)...)
+	patchOps = append(patchOps, addOtelNginxEnvVar(pod, instrRule, containerId)...)
 	patchOps = append(patchOps, addSpecifiedContainerEnvVars(instrRule.InjectionRules.EnvVars, containerId)...)
 
-	patchOps = append(patchOps, addOtelApacheAgentVolumeMount(pod, instrRule, containerId)...)
-	patchOps = append(patchOps, addApacheApplicationContainerCloneAsInit(pod, instrRule, containerId)...)
-	patchOps = append(patchOps, dropApachePassedConfig(pod, instrRule, containerId)...)
-	patchOps = append(patchOps, addOtelApacheAgentInitContainer(pod, instrRule)...)
+	patchOps = append(patchOps, addOtelNginxAgentVolumeMount(pod, instrRule, containerId)...)
+	patchOps = append(patchOps, addNginxApplicationContainerCloneAsInit(pod, instrRule, containerId)...)
+	patchOps = append(patchOps, dropNginxPassedConfig(pod, instrRule, containerId)...)
+	patchOps = append(patchOps, addOtelNginxAgentInitContainer(pod, instrRule)...)
 
-	patchOps = append(patchOps, addOtelApacheAgentVolume(pod, instrRule)...)
-	patchOps = append(patchOps, addOtelApacheSourceConfVolume(pod, instrRule)...)
+	patchOps = append(patchOps, addOtelNginxAgentVolume(pod, instrRule)...)
+	patchOps = append(patchOps, addOtelNginxSourceConfVolume(pod, instrRule)...)
 
 	if instrRule.InjectionRules.OpenTelemetryCollector != "" {
 		otelCollConfig, found := otelCollsConfig[instrRule.InjectionRules.OpenTelemetryCollector]
@@ -93,32 +89,30 @@ func apacheOtelInstrumentation(pod corev1.Pod, instrRule *InstrumentationRule) [
 	return patchOps
 }
 
-func addOtelApacheEnvVar(pod corev1.Pod, instrRules *InstrumentationRule, containerIdx int) []patchOperation {
+func addOtelNginxEnvVar(pod corev1.Pod, instrRules *InstrumentationRule, containerIdx int) []patchOperation {
 	patchOps := []patchOperation{}
 
-	/*
-		patchOps = append(patchOps, patchOperation{
-			Op:   "add",
-			Path: fmt.Sprintf("/spec/containers/%d/env/-", containerIdx),
-			Value: corev1.EnvVar{
-				Name:  "LD_LIBRARY_PATH",
-				Value: OTEL_WEBSERVER_AGENT_DIR + "/sdk_lib/lib",
-			},
-		})
-	*/
+	patchOps = append(patchOps, patchOperation{
+		Op:   "add",
+		Path: fmt.Sprintf("/spec/containers/%d/env/-", containerIdx),
+		Value: corev1.EnvVar{
+			Name:  "LD_LIBRARY_PATH",
+			Value: OTEL_WEBSERVER_AGENT_DIR + "/sdk_lib/lib",
+		},
+	})
 
 	return patchOps
 }
 
-func addOtelApacheAgentVolumeMount(pod corev1.Pod, instrRules *InstrumentationRule, containerIdx int) []patchOperation {
+func addOtelNginxAgentVolumeMount(pod corev1.Pod, instrRules *InstrumentationRule, containerIdx int) []patchOperation {
 	patchOps := []patchOperation{}
 	// directory with modified Apache conf directory
 	patchOps = append(patchOps, patchOperation{
 		Op:   "add",
 		Path: fmt.Sprintf("/spec/containers/%d/volumeMounts/-", containerIdx),
 		Value: corev1.VolumeMount{
-			MountPath: "/usr/local/apache2/conf",
-			Name:      "apache-conf-dir",
+			MountPath: "/etc/nginx",
+			Name:      "nginx-conf-dir",
 		},
 	})
 	// directory with webserver agent
@@ -127,19 +121,19 @@ func addOtelApacheAgentVolumeMount(pod corev1.Pod, instrRules *InstrumentationRu
 		Path: fmt.Sprintf("/spec/containers/%d/volumeMounts/-", containerIdx),
 		Value: corev1.VolumeMount{
 			MountPath: OTEL_WEBSERVER_AGENT_DIR, //TODO
-			Name:      "otel-agent-repo-apache", //TODO
+			Name:      "otel-agent-repo-nginx",  //TODO
 		},
 	})
 	return patchOps
 }
 
-func addOtelApacheAgentVolume(pod corev1.Pod, instrRules *InstrumentationRule) []patchOperation {
+func addOtelNginxAgentVolume(pod corev1.Pod, instrRules *InstrumentationRule) []patchOperation {
 	patchOps := []patchOperation{}
 	patchOps = append(patchOps, patchOperation{
 		Op:   "add",
 		Path: "/spec/volumes/-",
 		Value: corev1.Volume{
-			Name: "otel-agent-repo-apache", //TODO
+			Name: "otel-agent-repo-nginx", //TODO
 			VolumeSource: corev1.VolumeSource{
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
@@ -148,13 +142,13 @@ func addOtelApacheAgentVolume(pod corev1.Pod, instrRules *InstrumentationRule) [
 	return patchOps
 }
 
-func addOtelApacheSourceConfVolume(pod corev1.Pod, instrRules *InstrumentationRule) []patchOperation {
+func addOtelNginxSourceConfVolume(pod corev1.Pod, instrRules *InstrumentationRule) []patchOperation {
 	patchOps := []patchOperation{}
 	patchOps = append(patchOps, patchOperation{
 		Op:   "add",
 		Path: "/spec/volumes/-",
 		Value: corev1.Volume{
-			Name: "apache-conf-dir", //TODO
+			Name: "nginx-conf-dir", //TODO
 			VolumeSource: corev1.VolumeSource{
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
@@ -163,31 +157,35 @@ func addOtelApacheSourceConfVolume(pod corev1.Pod, instrRules *InstrumentationRu
 	return patchOps
 }
 
-func addOtelApacheAgentInitContainer(pod corev1.Pod, instrRules *InstrumentationRule) []patchOperation {
+func addOtelNginxAgentInitContainer(pod corev1.Pod, instrRules *InstrumentationRule) []patchOperation {
 	patchOps := []patchOperation{}
 	limCPU, _ := resource.ParseQuantity("200m")
 	limMem, _ := resource.ParseQuantity("75M")
 	reqCPU, _ := resource.ParseQuantity(instrRules.InjectionRules.ResourceReservation.CPU)
 	reqMem, _ := resource.ParseQuantity(instrRules.InjectionRules.ResourceReservation.Memory)
 
+	////////////////////////////////////////////////////////
 	patchOps = append(patchOps, patchOperation{
 		Op:   "add",
 		Path: "/spec/initContainers/-",
 		Value: corev1.Container{
-			Name:    "otel-agent-attach-apache", //TODO
+			Name:    "otel-agent-attach-nginx", //TODO
 			Image:   instrRules.InjectionRules.Image,
 			Command: []string{"/bin/sh", "-c"},
 			Args: []string{
 				"cp -ar /opt/opentelemetry/* " + OTEL_WEBSERVER_AGENT_DIR + " && " +
-					"echo \"$OPENTELEMETRY_MODULE_CONF\" > " + OTEL_WEBSERVER_CONFIG_DIR + "/opentelemetry_module.conf && " +
-					"cat " + OTEL_WEBSERVER_CONFIG_DIR + "/opentelemetry_module.conf && " +
-					"echo 'Include /usr/local/apache2/conf/opentelemetry_module.conf' >> " + OTEL_WEBSERVER_CONFIG_DIR + "/httpd.conf",
+					"echo \"$OPENTELEMETRY_MODULE_CONF\" > " + OTEL_WEBSERVER_CONFIG_DIR + "/opentelemetry_agent.conf && " +
+					"cp " + OTEL_WEBSERVER_CONFIG_DIR + "/nginx.conf " + OTEL_WEBSERVER_CONFIG_DIR + "/nginx.conf.old && " +
+					// Patch nginx.conf - include agent libs + conf
+					OTEL_WEBSERVER_AGENT_DIR + "/nginxConfPatcher " + OTEL_WEBSERVER_CONFIG_DIR + "/nginx.conf.old " +
+					OTEL_WEBSERVER_AGENT_DIR + "/WebServerModule/Nginx/ngx_http_opentelemetry_module.so " +
+					"/etc/nginx/opentelemetry_agent.conf > " + OTEL_WEBSERVER_CONFIG_DIR + "/nginx.conf",
 			},
 			ImagePullPolicy: corev1.PullAlways,
 			Env: []corev1.EnvVar{
 				{
 					Name:  "OPENTELEMETRY_MODULE_CONF",
-					Value: getApacheOtelConfig(pod, instrRules),
+					Value: getNginxOtelConfig(pod, instrRules),
 				},
 			},
 			Resources: corev1.ResourceRequirements{
@@ -203,11 +201,11 @@ func addOtelApacheAgentInitContainer(pod corev1.Pod, instrRules *Instrumentation
 			VolumeMounts: []corev1.VolumeMount{
 				{
 					MountPath: OTEL_WEBSERVER_CONFIG_DIR,
-					Name:      "apache-conf-dir",
+					Name:      "nginx-conf-dir",
 				},
 				{
 					MountPath: OTEL_WEBSERVER_AGENT_DIR,
-					Name:      "otel-agent-repo-apache",
+					Name:      "otel-agent-repo-nginx",
 				},
 			},
 		},
@@ -215,47 +213,21 @@ func addOtelApacheAgentInitContainer(pod corev1.Pod, instrRules *Instrumentation
 	return patchOps
 }
 
-func getApacheOtelConfig(pod corev1.Pod, instrRules *InstrumentationRule) string {
+func getNginxOtelConfig(pod corev1.Pod, instrRules *InstrumentationRule) string {
 	template := `
-LoadFile %[1]s/sdk_lib/lib/libopentelemetry_common.so
-LoadFile %[1]s/sdk_lib/lib/libopentelemetry_resources.so
-LoadFile %[1]s/sdk_lib/lib/libopentelemetry_trace.so
-LoadFile %[1]s/sdk_lib/lib/libopentelemetry_otlp_recordable.so
-LoadFile %[1]s/sdk_lib/lib/libopentelemetry_exporter_ostream_span.so
-LoadFile %[1]s/sdk_lib/lib/libopentelemetry_exporter_otlp_grpc.so
-
-#Load the ApacheModule SDK
-LoadFile %[1]s/sdk_lib/lib/libopentelemetry_webserver_sdk.so
-#Load the Apache Module. In this example for Apache 2.4
-#LoadModule otel_apache_module %[1]s/WebServerModule/Apache/libmod_apache_otel22.so
-LoadModule otel_apache_module %[1]s/WebServerModule/Apache/libmod_apache_otel.so
-ApacheModuleEnabled ON
-
-#ApacheModule Otel Exporter details
-ApacheModuleOtelSpanExporter otlp
-ApacheModuleOtelExporterEndpoint %[2]s
-
-# SSL Certificates
-#ApacheModuleOtelSslEnabled ON
-#ApacheModuleOtelSslCertificatePath 
-
-#ApacheModuleOtelSpanProcessor Batch
-#ApacheModuleOtelSampler AlwaysOn
-#ApacheModuleOtelMaxQueueSize 1024
-#ApacheModuleOtelScheduledDelayMillis 3000
-#ApacheModuleOtelExportTimeoutMillis 30000
-#ApacheModuleOtelMaxExportBatchSize 1024
-
-ApacheModuleServiceName %[3]s
-ApacheModuleServiceNamespace %[4]s
-ApacheModuleServiceInstanceId %[5]s
-
-ApacheModuleResolveBackends ON
-ApacheModuleTraceAsError ON
-#ApacheModuleWebserverContext DemoService DemoServiceNamespace DemoInstanceId
-
-#ApacheModuleSegmentType custom
-#ApacheModuleSegmentParameter 15,1,6,7          
+NginxModuleEnabled ON;
+# AppDynamics Otel Exporter details
+NginxModuleOtelSpanExporter otlp;
+NginxModuleOtelExporterEndpoint %[1]s;
+NginxModuleOtelSpanProcessor Batch;
+NginxModuleOtelSampler  AlwaysOn;
+NginxModuleServiceName %[2]s;
+NginxModuleServiceNamespace %[3]s;
+NginxModuleServiceInstanceId %[4]s;
+NginxModuleOtelMaxQueueSize 1024;
+NginxModuleOtelScheduledDelayMillis 3000;
+NginxModuleOtelExportTimeoutMillis 30000;
+NginxModuleOtelMaxExportBatchSize 1024;
 `
 
 	collectorEndpoint := ""
@@ -275,14 +247,13 @@ ApacheModuleTraceAsError ON
 	}
 
 	return fmt.Sprintf(template,
-		OTEL_WEBSERVER_AGENT_DIR,
 		collectorEndpoint,
 		getTierName(pod, instrRules),
 		getApplicationName(pod, instrRules),
 		pod.GetName()+pod.GetGenerateName()+"a")
 }
 
-func addApacheApplicationContainerCloneAsInit(pod corev1.Pod, instrRules *InstrumentationRule, containerId int) []patchOperation {
+func addNginxApplicationContainerCloneAsInit(pod corev1.Pod, instrRules *InstrumentationRule, containerId int) []patchOperation {
 	patchOps := []patchOperation{}
 	limCPU, _ := resource.ParseQuantity("200m")
 	limMem, _ := resource.ParseQuantity("75M")
@@ -290,7 +261,7 @@ func addApacheApplicationContainerCloneAsInit(pod corev1.Pod, instrRules *Instru
 	reqMem, _ := resource.ParseQuantity(instrRules.InjectionRules.ResourceReservation.Memory)
 
 	initContainerSpec := pod.Spec.Containers[containerId].DeepCopy()
-	initContainerSpec.Name = "apache-source-copy"
+	initContainerSpec.Name = "nginx-source-copy"
 	initContainerSpec.Resources = corev1.ResourceRequirements{
 		Limits: corev1.ResourceList{
 			corev1.ResourceCPU:    limCPU,
@@ -304,11 +275,11 @@ func addApacheApplicationContainerCloneAsInit(pod corev1.Pod, instrRules *Instru
 	initContainerSpec.VolumeMounts = append(initContainerSpec.VolumeMounts,
 		corev1.VolumeMount{
 			MountPath: OTEL_WEBSERVER_CONFIG_DIR,
-			Name:      "apache-conf-dir",
+			Name:      "nginx-conf-dir",
 		},
 	)
 	initContainerSpec.Command = []string{"/bin/sh", "-c"}
-	initContainerSpec.Args = []string{"cp -r /usr/local/apache2/conf/* " + OTEL_WEBSERVER_CONFIG_DIR}
+	initContainerSpec.Args = []string{"cp -r /etc/nginx/* " + OTEL_WEBSERVER_CONFIG_DIR}
 
 	patchOps = append(patchOps, patchOperation{
 		Op:    "add",
@@ -318,11 +289,11 @@ func addApacheApplicationContainerCloneAsInit(pod corev1.Pod, instrRules *Instru
 	return patchOps
 }
 
-func dropApachePassedConfig(pod corev1.Pod, instrRules *InstrumentationRule, containerId int) []patchOperation {
+func dropNginxPassedConfig(pod corev1.Pod, instrRules *InstrumentationRule, containerId int) []patchOperation {
 	patchOps := []patchOperation{}
 
 	for idx, volume := range pod.Spec.Containers[containerId].VolumeMounts {
-		if strings.Contains(volume.MountPath, "/usr/local/apache2/conf") { // potentially passes config, which we want to pass to init copy only
+		if strings.Contains(volume.MountPath, "/etc/nginx") { // potentially passes config, which we want to pass to init copy only
 			patchOps = append(patchOps, patchOperation{
 				Op:   "remove",
 				Path: fmt.Sprintf("/spec/containers/%d/volumeMounts/%d", containerId, idx),
