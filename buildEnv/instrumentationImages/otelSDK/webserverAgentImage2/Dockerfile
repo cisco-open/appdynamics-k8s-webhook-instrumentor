@@ -1,21 +1,6 @@
-############################
-# STEP 1 build executable binary
-############################
-FROM golang:alpine AS builder
-# Install git.
-# Git is required for fetching the dependencies.
-RUN apk update && apk add --no-cache git
-WORKDIR $GOPATH/src/helpers/patcher/
-COPY helpers/nginxConfPatcher .
-# Fetch dependencies.
-# Using go get.
-RUN go get -d -v
-# Build the binary.
-RUN GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o /go/bin/nginxConfPatcher
-
 
 ############################
-# STEP 2 download the webserver agent 
+# STEP 1 download the webserver agent 
 ############################
 FROM alpine:latest as agent
 
@@ -23,9 +8,9 @@ RUN mkdir /opt/opentelemetry
 WORKDIR /opt/opentelemetry
 
 RUN wget https://github.com/open-telemetry/opentelemetry-cpp-contrib/releases/download/webserver%2Fv1.0.0/opentelemetry-webserver-sdk-x64-linux.tgz.zip
-
+RUN unzip opentelemetry-webserver-sdk-x64-linux.tgz.zip
+RUN mkdir agent
 RUN tar -xvf opentelemetry-webserver-sdk-x64-linux.tgz -C agent
-WORKDIR /opt/opentelemetry/agent/opentelemetry-webserver-sdk
 
 ############################
 # STEP 2 download the webserver agent 
@@ -33,7 +18,6 @@ WORKDIR /opt/opentelemetry/agent/opentelemetry-webserver-sdk
 FROM alpine:latest
 
 COPY --from=agent /opt/opentelemetry/agent/opentelemetry-webserver-sdk /opt/opentelemetry
-COPY --from=builder /go/bin/nginxConfPatcher /opt/opentelemetry
 
 RUN chmod a+w /opt/opentelemetry/logs
 
