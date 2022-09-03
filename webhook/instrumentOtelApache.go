@@ -179,6 +179,8 @@ func addOtelApacheAgentInitContainer(pod corev1.Pod, instrRules *Instrumentation
 			Command: []string{"/bin/sh", "-c"},
 			Args: []string{
 				"cp -ar /opt/opentelemetry/* " + OTEL_WEBSERVER_AGENT_DIR + " && " +
+					"export agentLogDir=$(echo \"" + OTEL_WEBSERVER_AGENT_DIR + "/logs\" | sed 's,/,\\\\/,g') && " +
+					"cat " + OTEL_WEBSERVER_AGENT_DIR + "/conf/appdynamics_sdk_log4cxx.xml.template | sed 's/__agent_log_dir__/'${agentLogDir}'/g'  > " + OTEL_WEBSERVER_AGENT_DIR + "/conf/appdynamics_sdk_log4cxx.xml &&" +
 					"echo \"$OPENTELEMETRY_MODULE_CONF\" > " + OTEL_WEBSERVER_CONFIG_DIR + "/opentelemetry_module.conf && " +
 					"cat " + OTEL_WEBSERVER_CONFIG_DIR + "/opentelemetry_module.conf && " +
 					"echo 'Include /usr/local/apache2/conf/opentelemetry_module.conf' >> " + OTEL_WEBSERVER_CONFIG_DIR + "/httpd.conf",

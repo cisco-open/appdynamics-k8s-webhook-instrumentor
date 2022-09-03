@@ -12,6 +12,7 @@ data:
       worker_connections  10240;
     }
     http {
+      include /etc/nginx/conf.d/*.conf;
       server {
         listen       8765;
         server_name  localhost;
@@ -24,6 +25,7 @@ data:
           proxy_pass http://www.seznam.cz/;
         }
       }
+
     }
 
 ---
