@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -26,6 +27,11 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+func (s OtelConfig) String() string {
+	return fmt.Sprintf("Trace: %t, Endpoint: %s, Samples/M %d, LogPayload: %t, ServiceName: %s, ServiceNamespace: %s",
+		s.Trace, s.Endpoint, s.SamplesPerMillion, s.LogPayload, s.ServiceName, s.ServiceNamespace)
+}
 
 const (
 	tlsDir      = `/run/secrets/tls`
@@ -76,6 +82,29 @@ func applyAppdInstrumentation(req *admission.AdmissionRequest) ([]patchOperation
 
 func main() {
 
+	otelTracing := flag.Bool("otel-tracing", false, "set to true to otel traces enabled")
+	otelEndpoint := flag.String("otel-endpoint", "localhost:4317", "otel collector endpoint <host>:<port>")
+	otelSamplesPerMillion := flag.Int64("otel-samples-per-million", 1000, "number of otel trace samples per million requests")
+	otelLogPayload := flag.Bool("otel-log-layload", false, "set to true if payload attached to traces as attribute")
+	otelServiceName := flag.String("otel-service-name", "mwh", "service name")
+	otelServiceNamespace := flag.String("otel-service-namespace", "default", "service namespace")
+	flag.Parse()
+
+	otelConfig = OtelConfig{
+		Trace:             *otelTracing,
+		Endpoint:          *otelEndpoint,
+		SamplesPerMillion: *otelSamplesPerMillion,
+		LogPayload:        *otelLogPayload,
+		ServiceName:       *otelServiceName,
+		ServiceNamespace:  *otelServiceNamespace,
+	}
+
+	if otelConfig.Trace {
+		log.Printf("Using otel tracing: %s\n", otelConfig)
+		shutdown := initOtelTracing()
+		defer shutdown()
+	}
+
 	go runConfigWatcher()
 
 	// select {}
@@ -84,8 +113,12 @@ func main() {
 	certPath := filepath.Join(tlsDir, tlsCertFile)
 	keyPath := filepath.Join(tlsDir, tlsKeyFile)
 
+	tracer := getTracer("webhook-tracer")
+	log.Printf("Otel Tracer: %v\n", tracer)
+
 	mux := http.NewServeMux()
-	mux.Handle("/mutate", admitFuncHandler(applyAppdInstrumentation))
+
+	mux.Handle("/mutate", otelHandler(admitFuncHandler(applyAppdInstrumentation), "/mutate"))
 	server := &http.Server{
 		// We listen on port 8443 such that we do not need root privileges or extra capabilities for this server.
 		// The Service object will take care of mapping this port to the HTTPS port 443.
