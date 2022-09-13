@@ -29,6 +29,8 @@ func instrument(pod corev1.Pod, instrRule *InstrumentationRule) ([]patchOperatio
 
 	patchOps := []patchOperation{}
 
+	containerIdx := 0
+
 	log.Printf("Using instrumentation rule : %s", instrRule.Name)
 
 	if len(pod.Annotations) == 0 {
@@ -41,17 +43,17 @@ func instrument(pod corev1.Pod, instrRule *InstrumentationRule) ([]patchOperatio
 
 	if len(pod.Spec.Containers) > 0 {
 		// fmt.Printf("Container Env: %d -> %v\n", len(pod.Spec.Containers[0].Env), pod.Spec.Containers[0].Env)
-		if len(pod.Spec.Containers[0].Env) == 0 {
+		if len(pod.Spec.Containers[containerIdx].Env) == 0 {
 			patchOps = append(patchOps, patchOperation{
 				Op:    "add",
-				Path:  "/spec/containers/0/env",
+				Path:  fmt.Sprintf("/spec/containers/%d/env", containerIdx),
 				Value: []corev1.EnvVar{},
 			})
 		}
-		if len(pod.Spec.Containers[0].VolumeMounts) == 0 {
+		if len(pod.Spec.Containers[containerIdx].VolumeMounts) == 0 {
 			patchOps = append(patchOps, patchOperation{
 				Op:    "add",
-				Path:  "/spec/containers/0/volumeMounts",
+				Path:  fmt.Sprintf("/spec/containers/%d/volumeMounts", containerIdx),
 				Value: []corev1.VolumeMount{},
 			})
 		}
@@ -77,6 +79,8 @@ func instrument(pod corev1.Pod, instrRule *InstrumentationRule) ([]patchOperatio
 		for _, injectionRule := range instrRule.InjectionRuleSet {
 			instrRule.InjectionRules = &injectionRule
 			patchOps = append(patchOps, applyInjectionRule(pod, instrRule)...)
+
+			patchOps = removeDupliciteEnvs(patchOps, containerIdx)
 		}
 	} else {
 		// It's a simple injection rule, one provider, one technology
@@ -304,6 +308,8 @@ func addNetvizEnvVars(pod corev1.Pod, instrRules *InstrumentationRule, container
 func addControllerEnvVars(containerIdx int) []patchOperation {
 	patchOps := []patchOperation{}
 
+	// this assumes secret exists in a given namespace, at this time, it's not ensured by the
+	// webhook!
 	if config.ControllerConfig.AccessKeySecret != "" {
 		patchOps = append(patchOps, patchOperation{
 			Op:   "add",
@@ -356,4 +362,40 @@ func getTechnologyAndProvider(technologyString string) (string, string) {
 		provider = elems[1]
 	}
 	return technology, provider
+}
+
+func removeDupliciteEnvs(patchOps []patchOperation, containerIdx int) []patchOperation {
+
+	newPatchOps := []patchOperation{}
+
+	envMap := map[string]int{}
+
+	for idx, po := range patchOps {
+		if po.Path == fmt.Sprintf("/spec/containers/%d/env/-", containerIdx) {
+			env, ok := po.Value.(corev1.EnvVar)
+			if !ok {
+				continue
+			}
+			envMap[env.Name] = idx
+		}
+	}
+
+	log.Printf("Env Map: %v\n", envMap)
+
+	for idx, po := range patchOps {
+		if po.Path != fmt.Sprintf("/spec/containers/%d/env/-", containerIdx) {
+			newPatchOps = append(newPatchOps, po)
+		} else {
+			env, ok := po.Value.(corev1.EnvVar)
+			if !ok { // should not ever happen, but just to be sure...
+				newPatchOps = append(newPatchOps, po)
+				continue
+			}
+			if envMap[env.Name] == idx { //this is the last occurence, use it
+				newPatchOps = append(newPatchOps, po)
+			}
+		}
+	}
+
+	return newPatchOps
 }

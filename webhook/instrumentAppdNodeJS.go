@@ -30,9 +30,12 @@ func nodejsAppdInstrumentation(pod corev1.Pod, instrRule *InstrumentationRule) [
 	patchOps = append(patchOps, addNodejsEnvVar(pod, instrRule, 0)...)
 	patchOps = append(patchOps, addContainerEnvVar("APPDYNAMICS_AGENT_APPLICATION_NAME", getApplicationName(pod, instrRule), 0))
 	patchOps = append(patchOps, addContainerEnvVar("APPDYNAMICS_AGENT_TIER_NAME", getTierName(pod, instrRule), 0))
-	patchOps = append(patchOps, addContainerEnvVar("APPDYNAMICS_AGENT_REUSE_NODE_NAME_PREFIX", getTierName(pod, instrRule), 0))
+	if reuseNodeNames(instrRule) {
+		patchOps = append(patchOps, addContainerEnvVar("APPDYNAMICS_AGENT_REUSE_NODE_NAME_PREFIX", getTierName(pod, instrRule), 0))
+	}
+
 	// not sure it has to be there, but ClusterAgent does the following, too
-	patchOps = append(patchOps, addContainerEnvVar("APPDYNAMICS_AGENT_NODE_NAME", getTierName(pod, instrRule), 0))
+	// patchOps = append(patchOps, addContainerEnvVar("APPDYNAMICS_AGENT_NODE_NAME", getTierName(pod, instrRule), 0))
 
 	patchOps = append(patchOps, addSpecifiedContainerEnvVars(instrRule.InjectionRules.EnvVars, 0)...)
 
@@ -51,7 +54,23 @@ func addNodejsEnvVar(pod corev1.Pod, instrRules *InstrumentationRule, containerI
 	patchOps := []patchOperation{}
 
 	patchOps = append(patchOps, addContainerEnvVar("NODE_OPTIONS", "--require /opt/appdynamics-nodejs/shim.js", 0))
-	patchOps = append(patchOps, addContainerEnvVar("APPDYNAMICS_AGENT_REUSE_NODE_NAME", "true", 0))
+	if reuseNodeNames(instrRules) {
+		patchOps = append(patchOps, addContainerEnvVar("APPDYNAMICS_AGENT_REUSE_NODE_NAME", "true", 0))
+	} else {
+		patchOps = append(patchOps, patchOperation{
+			Op:   "add",
+			Path: fmt.Sprintf("/spec/containers/%d/env/-", containerIdx),
+			Value: corev1.EnvVar{
+				Name: "APPDYNAMICS_AGENT_NODE_NAME",
+				ValueFrom: &corev1.EnvVarSource{
+					FieldRef: &corev1.ObjectFieldSelector{
+						APIVersion: "v1",
+						FieldPath:  "metadata.name",
+					},
+				},
+			},
+		})
+	}
 
 	// Check for proxy settings, doc does not say anything
 	if config.ControllerConfig.UseProxy {
