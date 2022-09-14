@@ -17,13 +17,25 @@ limitations under the License.
 package main
 
 import (
+	"bytes"
+	"context"
 	"fmt"
+	"html/template"
 	"log"
 	"strconv"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+type TemplateParams struct {
+	Labels               map[string]string
+	Annotations          map[string]string
+	NamespaceLabels      map[string]string
+	NamespaceAnnotations map[string]string
+	Namespace            string
+}
 
 func instrument(pod corev1.Pod, instrRule *InstrumentationRule) ([]patchOperation, error) {
 
@@ -201,6 +213,48 @@ func getApplicationName(pod corev1.Pod, instrRule *InstrumentationRule) string {
 		appName = pod.GetAnnotations()[injRules.ApplicationNameAnnotation]
 	case "namespace":
 		appName = pod.GetNamespace()
+	case "namespaceLabel":
+		nsName := pod.GetNamespace()
+		ns, err := clientset.CoreV1().Namespaces().Get(context.Background(), nsName, metav1.GetOptions{})
+		if err != nil {
+			log.Printf("Cannot read namespace %s: %v\n", nsName, err)
+			appName = nsName
+		} else {
+			appName = ns.GetLabels()[injRules.ApplicationNameLabel]
+		}
+	case "namespaceAnnotation":
+		nsName := pod.GetNamespace()
+		ns, err := clientset.CoreV1().Namespaces().Get(context.Background(), nsName, metav1.GetOptions{})
+		if err != nil {
+			log.Printf("Cannot read namespace %s: %v\n", nsName, err)
+			appName = nsName
+		} else {
+			appName = ns.GetAnnotations()[injRules.ApplicationNameAnnotation]
+		}
+	case "expression":
+		tmpl, err := template.New("expr").Parse(injRules.ApplicationNameExpression)
+		if err != nil {
+			log.Printf("Cannot parse application name expresstion %s: %v\n", injRules.ApplicationNameExpression, err)
+			appName = "DEFAULT_APP_NAME"
+		} else {
+			nsName := pod.GetNamespace()
+			ns, err := clientset.CoreV1().Namespaces().Get(context.Background(), nsName, metav1.GetOptions{})
+			if err != nil {
+				log.Printf("Cannot read namespace %s: %v\n", nsName, err)
+				appName = nsName
+			} else {
+				params := TemplateParams{
+					Labels:               pod.GetLabels(),
+					Annotations:          pod.GetAnnotations(),
+					NamespaceLabels:      ns.GetLabels(),
+					NamespaceAnnotations: ns.GetAnnotations(),
+					Namespace:            pod.GetNamespace(),
+				}
+				var nameBytes bytes.Buffer
+				tmpl.Execute(&nameBytes, params)
+				appName = nameBytes.String()
+			}
+		}
 	default:
 		appName = "DEFAULT_APP_NAME"
 	}
