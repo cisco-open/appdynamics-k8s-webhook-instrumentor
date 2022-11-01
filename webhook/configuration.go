@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2022 Martin Divis.
+Copyright (c) 2019 Cisco Systems, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,10 +21,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
 	"sync"
+	"text/template"
 	"time"
 
 	v1 "k8s.io/api/core/v1"
@@ -58,6 +60,7 @@ type Config struct {
 	AppdCloudConfig       *AppdCloudConfig
 	TelescopeConfig       *TelescopeConfig
 	InstrumentationConfig *InstrumentationConfig
+	FlexMatchTemplate     *template.Template
 	mutex                 sync.Mutex
 }
 
@@ -140,9 +143,10 @@ type InjectionTemplate struct {
 }
 
 type InstrumentationRule struct {
-	Name           string          `json:"name,omitempty" yaml:"name,omitempty" `
-	MatchRules     *MatchRules     `json:"matchRules,omitempty" yaml:"matchRules,omitempty"`
-	InjectionRules *InjectionRules `json:"injectionRules,omitempty" yaml:"injectionRules,omitempty"`
+	Name             string           `json:"name,omitempty" yaml:"name,omitempty" `
+	MatchRules       *MatchRules      `json:"matchRules,omitempty" yaml:"matchRules,omitempty"`
+	InjectionRules   *InjectionRules  `json:"injectionRules,omitempty" yaml:"injectionRules,omitempty"`
+	InjectionRuleSet []InjectionRules `json:"injectionRuleSet,omitempty" yaml:"injectionRuleSet,omitempty"`
 }
 
 type groupResource struct {
@@ -298,7 +302,13 @@ func updateConfig(obj interface{}) {
 	if telescope == "" {
 		log.Printf("No telescope config specification\n")
 	}
-	log.Printf("telescope config: \n%s\n", appdCloud)
+	log.Printf("telescope config: \n%s\n", telescope)
+
+	flexMatchConfig := data["flexMatch"]
+	if telescope == "" {
+		log.Printf("No flexMatch config specification\n")
+	}
+	log.Printf("FlexMatch config: \n%s\n", flexMatchConfig)
 
 	controllerConfig := &ControllerConfig{}
 	instrumentationConfig := &InstrumentationConfig{}
@@ -356,36 +366,55 @@ func updateConfig(obj interface{}) {
 	config.InstrumentationConfig = instrumentationConfig
 	config.TelescopeConfig = telescopeConfig
 	config.AppdCloudConfig = appdCloudConfig
-}
-
-//apply injection rules defaults
-func applyInjectionRulesDefaults(instrumentationConfig *InstrumentationConfig) {
-	for _, instrRule := range *instrumentationConfig {
-		injRules := instrRule.InjectionRules
-		injRules.ApplicationName = applyTemplateString(injRules.ApplicationName, "DEFAULT_APP_NAME")
-		if injRules.DoNotInstrument == nil {
-			falseValue := false
-			injRules.DoNotInstrument = &falseValue
+	if flexMatchConfig != "" {
+		config.FlexMatchTemplate, err = template.New("test").Parse(flexMatchConfig)
+		if err != nil {
+			log.Printf("Error parsing flex match template %s: %v\n", flexMatchConfig, err)
+			config.FlexMatchTemplate = nil
 		}
-		if injRules.UsePodNameForNodeName == nil {
-			falseValue := false
-			injRules.UsePodNameForNodeName = &falseValue
-		}
-		injRules.ApplicationNameSource = applyTemplateString(injRules.ApplicationNameSource, "namespace")
-		injRules.JavaEnvVar = applyTemplateString(injRules.JavaEnvVar, "JAVA_TOOL_OPTIONS")
-		injRules.TierNameSource = applyTemplateString(injRules.TierNameSource, "auto")
-		if injRules.ResourceReservation == nil {
-			injRules.ResourceReservation = &ResourceReservation{}
-		}
-		injRules.ResourceReservation.CPU = applyTemplateString(injRules.ResourceReservation.CPU, "100m")
-		injRules.ResourceReservation.Memory = applyTemplateString(injRules.ResourceReservation.Memory, "50M")
-
-		injRules.NetvizPort = applyTemplateString(injRules.NetvizPort, "3892")
-
+	} else {
+		config.FlexMatchTemplate = nil
 	}
 }
 
-//apply injection templates to instrumentation rules
+// apply injection rules defaults
+func applyInjectionRulesDefaults(instrumentationConfig *InstrumentationConfig) {
+	for _, instrRule := range *instrumentationConfig {
+		if instrRule.InjectionRules != nil {
+			instrRule.InjectionRules = injectionRuleDefaults(instrRule.InjectionRules)
+		}
+		// if ruleset exists, then apply defaults
+		for idx, instrRuleInSet := range instrRule.InjectionRuleSet {
+			instrRule.InjectionRuleSet[idx] = *injectionRuleDefaults(&instrRuleInSet)
+		}
+	}
+}
+
+func injectionRuleDefaults(injRules *InjectionRules) *InjectionRules {
+	injRules.ApplicationName = applyTemplateString(injRules.ApplicationName, "DEFAULT_APP_NAME")
+	if injRules.DoNotInstrument == nil {
+		falseValue := false
+		injRules.DoNotInstrument = &falseValue
+	}
+	if injRules.UsePodNameForNodeName == nil {
+		falseValue := false
+		injRules.UsePodNameForNodeName = &falseValue
+	}
+	injRules.ApplicationNameSource = applyTemplateString(injRules.ApplicationNameSource, "namespace")
+	injRules.JavaEnvVar = applyTemplateString(injRules.JavaEnvVar, "JAVA_TOOL_OPTIONS")
+	injRules.TierNameSource = applyTemplateString(injRules.TierNameSource, "auto")
+	if injRules.ResourceReservation == nil {
+		injRules.ResourceReservation = &ResourceReservation{}
+	}
+	injRules.ResourceReservation.CPU = applyTemplateString(injRules.ResourceReservation.CPU, "100m")
+	injRules.ResourceReservation.Memory = applyTemplateString(injRules.ResourceReservation.Memory, "50M")
+
+	injRules.NetvizPort = applyTemplateString(injRules.NetvizPort, "3892")
+
+	return injRules
+}
+
+// apply injection templates to instrumentation rules
 func applyInjectionTemplates(injectionTemplates *InjectionTemplates, instrumentationConfig *InstrumentationConfig) bool {
 	valid := true
 
@@ -401,43 +430,61 @@ func applyInjectionTemplates(injectionTemplates *InjectionTemplates, instrumenta
 
 	for _, instrRule := range *instrumentationConfig {
 		injRules := instrRule.InjectionRules
-		if injRules.Template != "" {
-			injTempRules, found := injectionTemplateMap[injRules.Template]
-			if !found {
-				log.Printf("Injection template '%s' not found for instrumentation rule '%s'\n", injRules.Template, instrRule.Name)
-				valid = false
-				continue
+		if injRules != nil {
+			if injRules.Template != "" {
+				injTempRules, found := injectionTemplateMap[injRules.Template]
+				if !found {
+					log.Printf("Injection template '%s' not found for instrumentation rule '%s'\n", injRules.Template, instrRule.Name)
+					valid = false
+					continue
+				}
+				instrRule.InjectionRules = injectionRuleTemplate(injRules, injTempRules)
 			}
-			injRules.ApplicationName = applyTemplateString(injRules.ApplicationName, injTempRules.ApplicationName)
-			injRules.ApplicationNameAnnotation = applyTemplateString(injRules.ApplicationNameAnnotation, injTempRules.ApplicationNameAnnotation)
-			injRules.ApplicationNameExpression = applyTemplateString(injRules.ApplicationNameExpression, injTempRules.ApplicationNameExpression)
-			injRules.ApplicationNameLabel = applyTemplateString(injRules.ApplicationNameLabel, injTempRules.ApplicationNameLabel)
-			injRules.ApplicationNameSource = applyTemplateString(injRules.ApplicationNameSource, injTempRules.ApplicationNameSource)
-			injRules.DoNotInstrument = applyTemplateBool(injRules.DoNotInstrument, injTempRules.DoNotInstrument)
-			injRules.Image = applyTemplateString(injRules.Image, injTempRules.Image)
-			injRules.JavaCustomConfig = applyTemplateString(injRules.JavaCustomConfig, injTempRules.JavaCustomConfig)
-			injRules.JavaEnvVar = applyTemplateString(injRules.JavaEnvVar, injTempRules.JavaEnvVar)
-			injRules.LogLevel = applyTemplateString(injRules.LogLevel, injTempRules.LogLevel)
-			injRules.Technology = applyTemplateString(injRules.Technology, injTempRules.Technology)
-			injRules.TierName = applyTemplateString(injRules.TierName, injTempRules.TierName)
-			injRules.TierNameAnnotation = applyTemplateString(injRules.TierNameAnnotation, injTempRules.TierNameAnnotation)
-			injRules.TierNameExpression = applyTemplateString(injRules.TierNameExpression, injTempRules.TierNameExpression)
-			injRules.TierNameLabel = applyTemplateString(injRules.TierNameLabel, injTempRules.TierNameLabel)
-			injRules.TierNameSource = applyTemplateString(injRules.TierNameSource, injTempRules.TierNameSource)
-			injRules.UsePodNameForNodeName = applyTemplateBool(injRules.UsePodNameForNodeName, injTempRules.UsePodNameForNodeName)
-			if injRules.ResourceReservation == nil && injTempRules.ResourceReservation != nil {
-				injRules.ResourceReservation = &ResourceReservation{}
-				injRules.ResourceReservation.CPU = applyTemplateString(injRules.ResourceReservation.CPU, injTempRules.ResourceReservation.CPU)
-				injRules.ResourceReservation.Memory = applyTemplateString(injRules.ResourceReservation.Memory, injTempRules.ResourceReservation.Memory)
+		}
+		for idx, instrRuleInSet := range instrRule.InjectionRuleSet {
+			if instrRuleInSet.Template != "" {
+				injTempRules, found := injectionTemplateMap[instrRuleInSet.Template]
+				if !found {
+					log.Printf("Injection template '%s' not found for instrumentation rule in set '%s'\n", injRules.Template, instrRule.Name)
+					valid = false
+					continue
+				}
+				instrRule.InjectionRuleSet[idx] = *injectionRuleTemplate(&instrRuleInSet, injTempRules)
 			}
-			injRules.NetvizPort = applyTemplateString(injRules.NetvizPort, injTempRules.NetvizPort)
-			injRules.OpenTelemetryCollector = applyTemplateString(injRules.OpenTelemetryCollector, injTempRules.OpenTelemetryCollector)
-			injRules.EnvVars = mergeNameValues(injRules.EnvVars, injTempRules.EnvVars)
-			injRules.Options = mergeNameValues(injRules.Options, injTempRules.Options)
-			///
 		}
 	}
 	return valid
+}
+
+func injectionRuleTemplate(injRules *InjectionRules, injTempRules *InjectionRules) *InjectionRules {
+	injRules.ApplicationName = applyTemplateString(injRules.ApplicationName, injTempRules.ApplicationName)
+	injRules.ApplicationNameAnnotation = applyTemplateString(injRules.ApplicationNameAnnotation, injTempRules.ApplicationNameAnnotation)
+	injRules.ApplicationNameExpression = applyTemplateString(injRules.ApplicationNameExpression, injTempRules.ApplicationNameExpression)
+	injRules.ApplicationNameLabel = applyTemplateString(injRules.ApplicationNameLabel, injTempRules.ApplicationNameLabel)
+	injRules.ApplicationNameSource = applyTemplateString(injRules.ApplicationNameSource, injTempRules.ApplicationNameSource)
+	injRules.DoNotInstrument = applyTemplateBool(injRules.DoNotInstrument, injTempRules.DoNotInstrument)
+	injRules.Image = applyTemplateString(injRules.Image, injTempRules.Image)
+	injRules.JavaCustomConfig = applyTemplateString(injRules.JavaCustomConfig, injTempRules.JavaCustomConfig)
+	injRules.JavaEnvVar = applyTemplateString(injRules.JavaEnvVar, injTempRules.JavaEnvVar)
+	injRules.LogLevel = applyTemplateString(injRules.LogLevel, injTempRules.LogLevel)
+	injRules.Technology = applyTemplateString(injRules.Technology, injTempRules.Technology)
+	injRules.TierName = applyTemplateString(injRules.TierName, injTempRules.TierName)
+	injRules.TierNameAnnotation = applyTemplateString(injRules.TierNameAnnotation, injTempRules.TierNameAnnotation)
+	injRules.TierNameExpression = applyTemplateString(injRules.TierNameExpression, injTempRules.TierNameExpression)
+	injRules.TierNameLabel = applyTemplateString(injRules.TierNameLabel, injTempRules.TierNameLabel)
+	injRules.TierNameSource = applyTemplateString(injRules.TierNameSource, injTempRules.TierNameSource)
+	injRules.UsePodNameForNodeName = applyTemplateBool(injRules.UsePodNameForNodeName, injTempRules.UsePodNameForNodeName)
+	if injRules.ResourceReservation == nil && injTempRules.ResourceReservation != nil {
+		injRules.ResourceReservation = &ResourceReservation{}
+		injRules.ResourceReservation.CPU = applyTemplateString(injRules.ResourceReservation.CPU, injTempRules.ResourceReservation.CPU)
+		injRules.ResourceReservation.Memory = applyTemplateString(injRules.ResourceReservation.Memory, injTempRules.ResourceReservation.Memory)
+	}
+	injRules.NetvizPort = applyTemplateString(injRules.NetvizPort, injTempRules.NetvizPort)
+	injRules.OpenTelemetryCollector = applyTemplateString(injRules.OpenTelemetryCollector, injTempRules.OpenTelemetryCollector)
+	injRules.EnvVars = mergeNameValues(injRules.EnvVars, injTempRules.EnvVars)
+	injRules.Options = mergeNameValues(injRules.Options, injTempRules.Options)
+	///
+	return injRules
 }
 
 func mergeNameValues(specific []NameValue, templated []NameValue) []NameValue {
@@ -615,4 +662,18 @@ func applyTemplateBool(specific *bool, template *bool) *bool {
 	} else {
 		return specific
 	}
+}
+
+// admitFuncHandler takes an admitFunc and wraps it into a http.Handler by means of calling serveAdmitFunc.
+func configHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "GET":
+			log.Printf("Config GET called\n")
+		case "POST":
+			log.Printf("Config POST called\n")
+		default:
+			log.Printf("Config Unsupported Method called\n")
+		}
+	})
 }

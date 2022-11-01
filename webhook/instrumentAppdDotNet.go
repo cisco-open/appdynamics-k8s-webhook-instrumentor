@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2022 Martin Divis.
+Copyright (c) 2019 Cisco Systems, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -26,43 +26,13 @@ import (
 func dotnetAppdInstrumentation(pod corev1.Pod, instrRule *InstrumentationRule) []patchOperation {
 	patchOps := []patchOperation{}
 
-	if len(pod.Spec.Containers) > 0 {
-		// fmt.Printf("Container Env: %d -> %v\n", len(pod.Spec.Containers[0].Env), pod.Spec.Containers[0].Env)
-		if len(pod.Spec.Containers[0].Env) == 0 {
-			patchOps = append(patchOps, patchOperation{
-				Op:    "add",
-				Path:  "/spec/containers/0/env",
-				Value: []corev1.EnvVar{},
-			})
-		}
-		if len(pod.Spec.Containers[0].VolumeMounts) == 0 {
-			patchOps = append(patchOps, patchOperation{
-				Op:    "add",
-				Path:  "/spec/containers/0/volumeMounts",
-				Value: []corev1.VolumeMount{},
-			})
-		}
-		if len(pod.Spec.Volumes) == 0 {
-			patchOps = append(patchOps, patchOperation{
-				Op:    "add",
-				Path:  "/spec/volumes/",
-				Value: []corev1.Volume{},
-			})
-		}
-		if len(pod.Spec.InitContainers) == 0 {
-			patchOps = append(patchOps, patchOperation{
-				Op:    "add",
-				Path:  "/spec/initContainers",
-				Value: []corev1.VolumeMount{},
-			})
-		}
-	}
-
 	patchOps = append(patchOps, addControllerEnvVars(0)...)
 	patchOps = append(patchOps, addDotnetEnvVar(pod, instrRule, 0)...)
 	patchOps = append(patchOps, addContainerEnvVar("APPDYNAMICS_AGENT_APPLICATION_NAME", getApplicationName(pod, instrRule), 0))
 	patchOps = append(patchOps, addContainerEnvVar("APPDYNAMICS_AGENT_TIER_NAME", getTierName(pod, instrRule), 0))
-	patchOps = append(patchOps, addContainerEnvVar("APPDYNAMICS_AGENT_REUSE_NODE_NAME_PREFIX", getTierName(pod, instrRule), 0))
+	if reuseNodeNames(instrRule) {
+		patchOps = append(patchOps, addContainerEnvVar("APPDYNAMICS_AGENT_REUSE_NODE_NAME_PREFIX", getTierName(pod, instrRule), 0))
+	}
 
 	patchOps = append(patchOps, addSpecifiedContainerEnvVars(instrRule.InjectionRules.EnvVars, 0)...)
 
@@ -84,7 +54,23 @@ func addDotnetEnvVar(pod corev1.Pod, instrRules *InstrumentationRule, containerI
 	patchOps = append(patchOps, addContainerEnvVar("CORECLR_PROFILER", "{57e1aa68-2229-41aa-9931-a6e93bbc64d8}", 0))
 	patchOps = append(patchOps, addContainerEnvVar("CORECLR_PROFILER_PATH", "/opt/appdynamics-dotnetcore/libappdprofiler.so", 0))
 	patchOps = append(patchOps, addContainerEnvVar("CORECLR_ENABLE_PROFILING", "1", 0))
-	patchOps = append(patchOps, addContainerEnvVar("APPDYNAMICS_AGENT_REUSE_NODE_NAME", "true", 0))
+	if reuseNodeNames(instrRules) {
+		patchOps = append(patchOps, addContainerEnvVar("APPDYNAMICS_AGENT_REUSE_NODE_NAME", "true", 0))
+	} else {
+		patchOps = append(patchOps, patchOperation{
+			Op:   "add",
+			Path: fmt.Sprintf("/spec/containers/%d/env/-", containerIdx),
+			Value: corev1.EnvVar{
+				Name: "APPDYNAMICS_AGENT_NODE_NAME",
+				ValueFrom: &corev1.EnvVarSource{
+					FieldRef: &corev1.ObjectFieldSelector{
+						APIVersion: "v1",
+						FieldPath:  "metadata.name",
+					},
+				},
+			},
+		})
+	}
 
 	if config.ControllerConfig.UseProxy {
 		patchOps = append(patchOps, addContainerEnvVar("APPDYNAMICS_PROXY_HOST_NAME", config.ControllerConfig.ProxyHost, 0))

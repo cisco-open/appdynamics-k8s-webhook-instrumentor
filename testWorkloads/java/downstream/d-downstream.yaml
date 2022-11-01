@@ -17,7 +17,8 @@ spec:
         app: downstream
         appdInstr: do
         appdApp: MD-instr-wh
-        language: java
+        # language: java
+        language: uni
     spec:
       containers:
       - name: downstream

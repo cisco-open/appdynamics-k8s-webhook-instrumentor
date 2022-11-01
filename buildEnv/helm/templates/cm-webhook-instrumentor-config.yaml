@@ -8,6 +8,9 @@ data:
   controller: | {{ printf "\n" }}
     {{- toYaml .Values.appdController | indent 4 }}
   {{ end }}
+  {{ if .Values.appdController }}
+  flexMatch: "{{ .Values.flexMatch }}"
+  {{ end }}
   instrumentation: | {{ printf "\n" }}
     {{- toYaml .Values.instrumentationRules | indent 4 }}
   injectionTemplates: | {{ printf "\n" }}

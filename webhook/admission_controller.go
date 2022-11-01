@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2022 Martin Divis.
+Copyright (c) 2019 Cisco Systems, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -130,6 +130,7 @@ func doServeAdmitFunc(w http.ResponseWriter, r *http.Request, admit admitFunc) (
 		}
 		admissionReviewResponse.Response.Allowed = true
 		admissionReviewResponse.Response.Patch = patchBytes
+		otelAddAttrs(r.Context(), body, patchBytes)
 
 		// Announce that we are returning a JSON patch (note: this is the only
 		// patch type currently supported, but we have to explicitly announce
@@ -151,7 +152,7 @@ func doServeAdmitFunc(w http.ResponseWriter, r *http.Request, admit admitFunc) (
 
 // serveAdmitFunc is a wrapper around doServeAdmitFunc that adds error handling and logging.
 func serveAdmitFunc(w http.ResponseWriter, r *http.Request, admit admitFunc) {
-	log.Print("Handling webhook request ...")
+	// log.Print("Handling webhook request ...")
 
 	var writeErr error
 	if bytes, err := doServeAdmitFunc(w, r, admit); err != nil {
@@ -159,7 +160,7 @@ func serveAdmitFunc(w http.ResponseWriter, r *http.Request, admit admitFunc) {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, writeErr = w.Write([]byte(err.Error()))
 	} else {
-		log.Print("Webhook request handled successfully")
+		// log.Print("Webhook request handled successfully")
 		_, writeErr = w.Write(bytes)
 	}
 
