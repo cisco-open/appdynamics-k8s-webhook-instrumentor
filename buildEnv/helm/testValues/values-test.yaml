@@ -1,0 +1,133 @@
+
+serviceaccount: webhook-instrumentor
+deploymentName: webhook-server
+webhookName: webhook-appd
+# namespacesEnabled is optional list of namespaces, where webhook would be applied. 
+# If missing, all namespaces will be enabled, except kubernetes system namespaces
+namespacesEnabled:
+  - ns1
+  - ns2
+#
+# namespacesDisabled is optional list of namespaces, where webhook would not be applied. 
+# If missing, all namespaces will be enabled, except kubernetes system namespaces 
+# (and namespace where the webook itself is running)
+namespacesDisabled:
+  - ns3
+#
+# enabledForPodsWithLabels is optional safety belt to try to instrument only pods
+# having set labels to a specific values
+enabledForPodsWithLabels:
+  - appdInstr
+#
+# number of replicas for webhook server
+replicas: 1
+certValidityDays: 1024
+# failure policy can be Fail or Ignore. 
+# Ignore is safer - should the webhook fail or be unresponsive for timeoutSeconds, pod gets created unchanged
+timeoutSeconds: 2
+failurePolicy: Ignore
+
+# optional - certs information. If missing, certs will be generated dynamically
+certs:
+  tlsCert: "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURlVENDQW1HZ0F3SUJBZ0lSQVBkTU1oaFB4dE01ZnBPeXU3MXZ2V0l3RFFZSktvWklodmNOQVFFTEJRQXcKS2pFb01DWUdBMVVFQXhNZmQyVmlhRzl2YXkxamFHRnVaMlV0WjNKdmRYQXRkMlZpYUc5dmF5MWpZVEFlRncweQpNakEyTWpReE1qSTNNRFJhRncweU16QTJNalF4TWpJM01EUmFNQjh4SFRBYkJnTlZCQU1URkhkbFltaHZiMnN0CmFXNXpkSEoxYldWdWRHOXlNSUlCSWpBTkJna3Foa2lHOXcwQkFRRUZBQU9DQVE4QU1JSUJDZ0tDQVFFQTBZdFkKWVFCR2xMcFc3aUFIKzhIeDBocDd0UkZpTk9oNmpqUWxlR09JRWQxOTFoR0VFTGVoUkt5b1V1RXE2NGIrOUNpSAo5RVlTeTNVU01DWWEvdmxXcEtNM1VxQ0JFd1dWRGwzRkZ1OFFYc1l3MWpBKzVhZW1KM3pvU3BQaWFwdjhPZUlwCks5UXEvNXMvTGlMSkdwTkU1Mkd3U1c5NWJmSnZvUHd2VUdJSjRGMFROdlh3M2YyQkZYek1wbWJjckpJWE12bXEKMC92aGl5cjBZZisrSXU5ZDhzRG5rNEp3UmdudzI3STU1Y1k0WEM5QXE1TGpuazFJVGdsT0JpNENJK2VDdm9IWgp5NWczenVvRmplR2N5eExxN0dLb2FZeUl0R2xYK0lpL3EvMVp0eWdhZVZ6Y3c0ZHJKbFlEZU92aFdNSlE3LzlJCkNoMzQ5SHVPZm9YL1ZXTmtDd0lEQVFBQm80R2tNSUdoTUE0R0ExVWREd0VCL3dRRUF3SUZvREFkQmdOVkhTVUUKRmpBVUJnZ3JCZ0VGQlFjREFRWUlLd1lCQlFVSEF3SXdEQVlEVlIwVEFRSC9CQUl3QURBZkJnTlZIU01FR0RBVwpnQlFXLzg1MmhNb0VxVUcvd0hHV0JESGJqQzc0QlRCQkJnTlZIUkVFT2pBNGdoaDNaV0pvYjI5ckxXbHVjM1J5CmRXMWxiblJ2Y2k1M2FIU0NISGRsWW1odmIyc3RhVzV6ZEhKMWJXVnVkRzl5TG5kb2RDNXpkbU13RFFZSktvWkkKaHZjTkFRRUxCUUFEZ2dFQkFFa1hBbDR5Z2g4OUJKZVdiOTNZMGQ0UGpFUlZCay9xSHVSL2xGYmxaYzNvTTZUWQo4dzhtRDZGbEJlSERvay9zazNjWUFPZ1JKUHp0MzlpTUd3dmRsU1I2L3UrREtDZm5zdlZQWTJJN0tHRVZReTIwCklPbDBKa1ZNMVNiaDRHRFVHMDZ3OEhlQlU0VUovVERtOXlITzlvYlhSNGEzbUU0aTFZOXluQ0g5MFhheFVNU3MKTEV0akxzV0pKRFpMeHk4TEtjVFFLQXNDajNrdXU0Ni85eTlZUEJ2emJIZDk2cWxjRVJYS09BdUZEL0wwUUx2YwozNkdlaWhTdkNxN1dNWklZR1MxdTlYVmV4Rk8zMjlYc0E1aDVxVnZvTGNYRkFPZmc5TDRIdGlaUmtQYUthM21KCmUxYVdrK2NVWEtsSUJhVHpzZW9qYis4VlNLWTdYbkFzWjI3cDFIYz0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo="
+  tlsKey: "LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcEFJQkFBS0NBUUVBMFl0WVlRQkdsTHBXN2lBSCs4SHgwaHA3dFJGaU5PaDZqalFsZUdPSUVkMTkxaEdFCkVMZWhSS3lvVXVFcTY0Yis5Q2lIOUVZU3kzVVNNQ1lhL3ZsV3BLTTNVcUNCRXdXVkRsM0ZGdThRWHNZdzFqQSsKNWFlbUozem9TcFBpYXB2OE9lSXBLOVFxLzVzL0xpTEpHcE5FNTJHd1NXOTViZkp2b1B3dlVHSUo0RjBUTnZYdwozZjJCRlh6TXBtYmNySklYTXZtcTAvdmhpeXIwWWYrK0l1OWQ4c0RuazRKd1JnbncyN0k1NWNZNFhDOUFxNUxqCm5rMUlUZ2xPQmk0Q0krZUN2b0haeTVnM3p1b0ZqZUdjeXhMcTdHS29hWXlJdEdsWCtJaS9xLzFadHlnYWVWemMKdzRkckpsWURlT3ZoV01KUTcvOUlDaDM0OUh1T2ZvWC9WV05rQ3dJREFRQUJBb0lCQVFDVCtSc0lKUEd5eFlQdAoxS0RPb0Q3c1o5ZEVIbXFEZ2toSmMzbWljbWI4ZHJVT0hvQnNiY0JzaHFDM0pscnd4L3Z5MzB4aXE3bEtBL284CkZpeXFNZG1GbWR6UGRKaXhuaGVNZFp0Z2ZxSEl5NXhoSk9ERnZJWVJESnZkVG1GdGQ0bStObjlzZS8rQlVWaGsKZEJ3ZnNDL1FWYVB2dDlEQVc1dUl5NDE5N2oyYk9kZTJaMTBRV0tsczJ5S1Z0RXdGdmM2N0Z6SFNJU1duWDlPagpGVjZZQ0xaSnFjZ01QQlZCZjk1eUMwYXcrVmlZK1RnQ2xJeGxQQnN0Y3NzTFhTODdDNjFiRG9qUDZMbjZBc0puCkJlVXBxbjljenZvNHFaVGxudnBRekdmT0w0cnU4RkxsV0hxTUhwUWpld0FwVmpHdmdUcGk5MGlPN01BKyswUkoKQkN3SUcwTkJBb0dCQU84NUx0SUlKVEJBbmdBb0RPU1U2NEFTUkR2RzE4U2F5SU1LTXAzN05LK25zdjUvWWpEZApmTTRIU1dHaHFSVkxMWEV1RWlrMDBSNFMwTXFJb3NPNHlUUXBRSkNoVXQvYWFlMXI5aVRrZVMwMWNRNW9pMnljCjZTSno2bW1YTmlYSFViQTVMNW9FSkhXWXJFVnJEd2dFZWpNVVAzSFdjVk45QWVaUEhnZCtyTUtkQW9HQkFPQTkKVkUrRHVhT1k0aE9hUEpOemdqQ3R0VkZ3YlU3RHFNbVE3TzhNcG80bkh2dC9vdXF0c0g1M1A2K2Vic1lmcFFJQgpaTnJXMUhJNHFsUDVPbUZnWktxQWtWRWpuOStlSTBYS2hRdVN5ZFowbmw1RDVKU1lia21GZDJRTTh2WllrSjV2CjZBejBuYTVBVytIZjVNRGUwZDBqWW4wdERTcFdBRUV2cTByVkg4ekhBb0dBWWtyc29nQVd4NnpGUHVzMTRQWVAKalovenlWdjZiQjN0SldxYlFhNW1CNGF3VlVHaDV0SWE1Y3k0cWhUeWxIMC9QckhmWkc3L1BZd2RuaHBtUm1VMgp4dWZzVDRENXZHRFNCV3ZHeDRIWkNHcGMrYjZiQ3hXdDlTb0x0emNhV0l0OVZSc3FJKzV2ektIZXB1ZEdWZFVCCklOdkE5ZFZXMnljU0VMK1JaeUwxZVVFQ2dZQm1wMnpiWWVBd0pxTUlla2xVNzBJZ2FzVmczT2tOYjhEclZhOUIKMkRhL1NPV0VHUEJLSXUxelY4QU44NmVlaDRvUW12YkN3Q3BOaCtkaHZleWQrM1RhSVRWbFFidkVzUzVRbXQvQgpacGVEMTZ0UVdDQmliazIrMXB6TGJxb2pZSFFFTkJLMUs1NnIwTWEvWnJIZ0lhRk5iUTkvWW9wdVlTU0lzdnZsCnJCOThyUUtCZ1FEQmFhM2dET1h2ZWIwQXJ1VTNCdDRUUm4wS2FCcFh4VXpxbVpyNERjZU5XZ0xUMTgrZVRCQUoKc29xcXdZTkFHaUlTUUFRbyt2VGtxOStvak8rYjNPbkl6dkgxa2NOWUR3d0xzWXBQakhvQTlxb3RicW45QWpkVQp5U0NkSm1Ranp3TU9hT0ZVQkNwSDJaeWhsekhjbFZMbmZqUEsrRll0NlBMRU92bXpHemRibEE9PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo="
+  caCert: "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURQekNDQWllZ0F3SUJBZ0lRTDh5eWJsKzZEVlkxMGluMndLTXpZREFOQmdrcWhraUc5dzBCQVFzRkFEQXEKTVNnd0pnWURWUVFERXg5M1pXSm9iMjlyTFdOb1lXNW5aUzFuY205MWNDMTNaV0pvYjI5ckxXTmhNQjRYRFRJeQpNRFl5TkRFeU1qY3dORm9YRFRJMU1EUXhNekV5TWpjd05Gb3dLakVvTUNZR0ExVUVBeE1mZDJWaWFHOXZheTFqCmFHRnVaMlV0WjNKdmRYQXRkMlZpYUc5dmF5MWpZVENDQVNJd0RRWUpLb1pJaHZjTkFRRUJCUUFEZ2dFUEFEQ0MKQVFvQ2dnRUJBSnNZV0hBbE04RUlpYloweE95RUYzVUptSHMwamxYMDA0MHJaZC9qUS84T0FjN3NvZUJyMkNmdAoyK2ZERVdRQTg0dTREbXpvc2h5a2VuSWFNYS9WT0FkU1YvZjJYK0lLTFB3Zlc0WjAvQVpXaUtHSThiTHpmcC9JCkd2S3FTbXNSWUJJM2laNllBRDhBR2hHMlI4VW1XZGYxVGZzYVhsRlRYRWxYNHh3ZWdOUlBzV1dSM0M5Vjd1aCsKY29wY3ZBZE44MFhMVUZWMFFTR0hLWU1rRVlBYXQzOFEwNXNBNXdPVDZGMnYrQXhCTU5McWQ3Uk9kdjJEVkw5ZAo1VGNJZGVYU1czMW5BZmhyYS9CZnJIOW9hSk9ETlkwRzVFYzgvTU83VDV1Q01ZTE85U0lUM0VLNm41d1I2RWFDCkROWElCdU50UEhWUS82VFlpZmJaL2FkV2doNGwvL0VDQXdFQUFhTmhNRjh3RGdZRFZSMFBBUUgvQkFRREFnS2sKTUIwR0ExVWRKUVFXTUJRR0NDc0dBUVVGQndNQkJnZ3JCZ0VGQlFjREFqQVBCZ05WSFJNQkFmOEVCVEFEQVFILwpNQjBHQTFVZERnUVdCQlFXLzg1MmhNb0VxVUcvd0hHV0JESGJqQzc0QlRBTkJna3Foa2lHOXcwQkFRc0ZBQU9DCkFRRUFoTlJKWjN4RXo2Tms5L3hLWU5pMy8yTi9DV1R3cjBxSURUQkxWL2dZYmlmOWlqU3lhM3ZBUTJST3d4eFYKUXJFL1o1Tm5xdWttT2pra2s0ejhFalI1VlRpdWNXUUludG5CTURjekVzQ1pDbnFHdFN1MDllZCtlN0hjd2NOawpMdHVGWGtndFk1ZmNSMlBsek42TW1Rb0RoSE51UkdtSFN2azdZN1RKQ3Zobjg5WGtObVg4dE0yeWZDSVZBSmlXClkyY2hCdVJKRWF0amh6amFTOEF0QzNmblAxc3k4SFlleTc0d0J4NHV0ZThVdFRzUHlYUUVUZEdPZVBsYUVTUTAKRTRxT2cxUEdtSXlnNkhCVmdjYmhOYU9aTE11V1ZNenFZNG9qK1JWQWhOdGlVblZRdGVhZE84YkZTcVZtNElRegpZd25jSkc0ckhQamVJci9FWVRIckUvek9qZz09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K"
+
+# optional - useServiceCAonOCP: true - if set, on OpenShift, Service CA certificates will be used
+useServiceCAonOCP: true
+
+# service type and port for webhook server
+service:
+  type: ClusterIP
+  port: 443
+
+image:
+  image: docker.io/chrlic/appd-webhook-instrumentor:v1.0.3-exp
+  pullPolicy: Always
+
+appdController:
+#  host: 192.168.227.132
+#  port: "8090"
+#  isSecure: false
+#  accountName: customer1
+#  accessKey: "0df071e7-6517-4444-b5bf-ff51e1532533"
+  host: ceer.saas.appdynamics.com
+  port: "443"
+  isSecure: true
+  accountName: ceer
+  accessKey: "3gnmajormowm"
+  useProxy: false
+  proxyHost: proxy.esl.cisco.com
+  proxyPort: "80"
+
+
+instrumentationTemplates:
+  - name: Java_Default
+    injectionRules:
+      technology: java
+      image: appdynamics/java-agent:latest
+      javaEnvVar: JAVA_TOOL_OPTIONS
+      applicationNameSource: label
+      applicationNameLabel: appdApp
+      tierNameSource: auto
+  - name: Dotnet_Default
+    injectionRules:
+      technology: dotnetcore
+      image: appdynamics/dotnet-core-agent:22.5.1
+      applicationNameSource: label
+      applicationNameLabel: appdApp
+      tierNameSource: auto
+  - name: Nodejs_Default
+    injectionRules:
+      technology: nodejs
+      image: appdynamics/nodejs-agent:22.5.0-16-stretch-slim
+      applicationNameSource: label
+      applicationNameLabel: appdApp
+      tierNameSource: auto
+
+instrumentationRules:
+  - name: javaTest1
+    matchRules:
+      namespaceRegex: .*
+      labels:
+      - matchLabel: test1
+      - language: java
+      annotations:
+      - annot1: .*
+      podNameRegex: .*
+    injectionRules:
+      technology: java
+      image: appdynamics/java-agent:latest
+      javaEnvVar: _JAVA_OPTIONS
+  - name: javaTest2
+    matchRules:
+      namespaceRegex: .*
+      labels:
+      - appdInstr: do
+      - language: java
+      podNameRegex: .*
+    injectionRules:
+      template: Java_Default
+      technology: java
+      image: appdynamics/java-agent:latest
+      javaEnvVar: _JAVA_OPTIONS
+      usePodNameForNodeName: true
+  - name: dotnet1
+    matchRules:
+      namespaceRegex: .*
+      labels:
+      - appdInstr: do
+      - language: dotnetcore
+      podNameRegex: .*
+    injectionRules:
+      template: Dotnet_Default
+  - name: nodejs1
+    matchRules:
+      namespaceRegex: .*
+      labels:
+      - appdInstr: do
+      - language: nodejs
+      podNameRegex: .*
+    injectionRules:
+      template: Nodejs_Default
+
