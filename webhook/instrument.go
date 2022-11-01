@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2022 Martin Divis.
+Copyright (c) 2019 Cisco Systems, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,17 +17,34 @@ limitations under the License.
 package main
 
 import (
+	"bytes"
+	"context"
 	"fmt"
+	"html/template"
 	"log"
 	"strconv"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
+
+type TemplateParams struct {
+	Labels               map[string]string
+	Annotations          map[string]string
+	NamespaceLabels      map[string]string
+	NamespaceAnnotations map[string]string
+	Namespace            string
+}
 
 func instrument(pod corev1.Pod, instrRule *InstrumentationRule) ([]patchOperation, error) {
 
+	getADIs(pod.GetNamespace())
+
 	patchOps := []patchOperation{}
+
+	containerIdx := 0
 
 	log.Printf("Using instrumentation rule : %s", instrRule.Name)
 
@@ -38,6 +55,58 @@ func instrument(pod corev1.Pod, instrRule *InstrumentationRule) ([]patchOperatio
 			Value: make(map[string]string),
 		})
 	}
+
+	if len(pod.Spec.Containers) > 0 {
+		// fmt.Printf("Container Env: %d -> %v\n", len(pod.Spec.Containers[0].Env), pod.Spec.Containers[0].Env)
+		if len(pod.Spec.Containers[containerIdx].Env) == 0 {
+			patchOps = append(patchOps, patchOperation{
+				Op:    "add",
+				Path:  fmt.Sprintf("/spec/containers/%d/env", containerIdx),
+				Value: []corev1.EnvVar{},
+			})
+		}
+		if len(pod.Spec.Containers[containerIdx].VolumeMounts) == 0 {
+			patchOps = append(patchOps, patchOperation{
+				Op:    "add",
+				Path:  fmt.Sprintf("/spec/containers/%d/volumeMounts", containerIdx),
+				Value: []corev1.VolumeMount{},
+			})
+		}
+		if len(pod.Spec.Volumes) == 0 {
+			patchOps = append(patchOps, patchOperation{
+				Op:    "add",
+				Path:  "/spec/volumes/",
+				Value: []corev1.Volume{},
+			})
+		}
+		if len(pod.Spec.InitContainers) == 0 {
+			patchOps = append(patchOps, patchOperation{
+				Op:    "add",
+				Path:  "/spec/initContainers",
+				Value: []corev1.VolumeMount{},
+			})
+		}
+	}
+
+	if len(instrRule.InjectionRuleSet) > 0 {
+		// If injection rule set defined, loop over rules
+		// append all together
+		for _, injectionRule := range instrRule.InjectionRuleSet {
+			instrRule.InjectionRules = &injectionRule
+			patchOps = append(patchOps, applyInjectionRule(pod, instrRule)...)
+
+			patchOps = removeDupliciteEnvs(patchOps, containerIdx)
+		}
+	} else {
+		// It's a simple injection rule, one provider, one technology
+		patchOps = append(patchOps, applyInjectionRule(pod, instrRule)...)
+	}
+
+	return patchOps, nil
+}
+
+func applyInjectionRule(pod corev1.Pod, instrRule *InstrumentationRule) []patchOperation {
+	patchOps := []patchOperation{}
 
 	_, provider := getTechnologyAndProvider(instrRule.InjectionRules.Technology)
 
@@ -50,7 +119,7 @@ func instrument(pod corev1.Pod, instrRule *InstrumentationRule) ([]patchOperatio
 		patchOps = append(patchOps, otelInstrumentation(pod, instrRule)...)
 	}
 
-	return patchOps, nil
+	return patchOps
 }
 
 func appdInstrumentation(pod corev1.Pod, instrRule *InstrumentationRule) []patchOperation {
@@ -147,6 +216,48 @@ func getApplicationName(pod corev1.Pod, instrRule *InstrumentationRule) string {
 		appName = pod.GetAnnotations()[injRules.ApplicationNameAnnotation]
 	case "namespace":
 		appName = pod.GetNamespace()
+	case "namespaceLabel":
+		nsName := pod.GetNamespace()
+		ns, err := clientset.CoreV1().Namespaces().Get(context.Background(), nsName, metav1.GetOptions{})
+		if err != nil {
+			log.Printf("Cannot read namespace %s: %v\n", nsName, err)
+			appName = nsName
+		} else {
+			appName = ns.GetLabels()[injRules.ApplicationNameLabel]
+		}
+	case "namespaceAnnotation":
+		nsName := pod.GetNamespace()
+		ns, err := clientset.CoreV1().Namespaces().Get(context.Background(), nsName, metav1.GetOptions{})
+		if err != nil {
+			log.Printf("Cannot read namespace %s: %v\n", nsName, err)
+			appName = nsName
+		} else {
+			appName = ns.GetAnnotations()[injRules.ApplicationNameAnnotation]
+		}
+	case "expression":
+		tmpl, err := template.New("expr").Parse(injRules.ApplicationNameExpression)
+		if err != nil {
+			log.Printf("Cannot parse application name expresstion %s: %v\n", injRules.ApplicationNameExpression, err)
+			appName = "DEFAULT_APP_NAME"
+		} else {
+			nsName := pod.GetNamespace()
+			ns, err := clientset.CoreV1().Namespaces().Get(context.Background(), nsName, metav1.GetOptions{})
+			if err != nil {
+				log.Printf("Cannot read namespace %s: %v\n", nsName, err)
+				appName = nsName
+			} else {
+				params := TemplateParams{
+					Labels:               pod.GetLabels(),
+					Annotations:          pod.GetAnnotations(),
+					NamespaceLabels:      ns.GetLabels(),
+					NamespaceAnnotations: ns.GetAnnotations(),
+					Namespace:            pod.GetNamespace(),
+				}
+				var nameBytes bytes.Buffer
+				tmpl.Execute(&nameBytes, params)
+				appName = nameBytes.String()
+			}
+		}
 	default:
 		appName = "DEFAULT_APP_NAME"
 	}
@@ -254,6 +365,8 @@ func addNetvizEnvVars(pod corev1.Pod, instrRules *InstrumentationRule, container
 func addControllerEnvVars(containerIdx int) []patchOperation {
 	patchOps := []patchOperation{}
 
+	// this assumes secret exists in a given namespace, at this time, it's not ensured by the
+	// webhook!
 	if config.ControllerConfig.AccessKeySecret != "" {
 		patchOps = append(patchOps, patchOperation{
 			Op:   "add",
@@ -306,4 +419,61 @@ func getTechnologyAndProvider(technologyString string) (string, string) {
 		provider = elems[1]
 	}
 	return technology, provider
+}
+
+func removeDupliciteEnvs(patchOps []patchOperation, containerIdx int) []patchOperation {
+
+	newPatchOps := []patchOperation{}
+
+	envMap := map[string]int{}
+
+	for idx, po := range patchOps {
+		if po.Path == fmt.Sprintf("/spec/containers/%d/env/-", containerIdx) {
+			env, ok := po.Value.(corev1.EnvVar)
+			if !ok {
+				continue
+			}
+			envMap[env.Name] = idx
+		}
+	}
+
+	log.Printf("Env Map: %v\n", envMap)
+
+	for idx, po := range patchOps {
+		if po.Path != fmt.Sprintf("/spec/containers/%d/env/-", containerIdx) {
+			newPatchOps = append(newPatchOps, po)
+		} else {
+			env, ok := po.Value.(corev1.EnvVar)
+			if !ok { // should not ever happen, but just to be sure...
+				newPatchOps = append(newPatchOps, po)
+				continue
+			}
+			if envMap[env.Name] == idx { //this is the last occurence, use it
+				newPatchOps = append(newPatchOps, po)
+			}
+		}
+	}
+
+	return newPatchOps
+}
+
+func getADIs(namespace string) error {
+	adiGVR := schema.GroupVersionResource{
+		Group:    "ext.appd.com",
+		Version:  "v1",
+		Resource: "appdynamicsinstrumentations",
+	}
+	adis, err := client.Resource(adiGVR).Namespace(namespace).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		log.Printf("Cannot get ADIs in namespace %s - %v\n", namespace, err)
+		return err
+	}
+
+	for _, adi := range adis.Items {
+		log.Printf("ADI - %s - %v\n", adi.GetName(), adi)
+		spec := adi.UnstructuredContent()["spec"].(map[string]interface{})
+		log.Printf("ADI Spec: \nexclude: %v\ninclude: %v\n", spec["exclude"], spec["include"])
+	}
+
+	return err
 }

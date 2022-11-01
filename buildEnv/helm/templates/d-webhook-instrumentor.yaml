@@ -18,6 +18,16 @@ spec:
       serviceAccountName: {{ .Values.serviceaccount }}
       containers:
       - name: {{ .Values.deploymentName }}
+        command: 
+        - /go/bin/webhook
+        {{ if .Values.otelTracing }}
+        - --otel-tracing=true
+        - --otel-service-name={{ .Values.otelTracing.serviceName }}
+        - --otel-service-namespace={{ .Release.Namespace }}
+        - --otel-endpoint={{ .Values.otelTracing.endpoint }}
+        - --otel-samples-per-million={{ .Values.otelTracing.samplesPerMillion }}
+        - --otel-log-layload={{ .Values.otelTracing.logPayload }}
+        {{ end }}
         image: {{ .Values.image.image }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         ports:

@@ -17,7 +17,8 @@ spec:
         app: myfirstapp
         appdApp: MD-instr-wh
         appdInstr: do
-        language: dotnetcore
+        # language: dotnetcore
+        language: uni
     spec:
       containers:
       - name: myfirstapp
