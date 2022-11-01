@@ -51,6 +51,7 @@ webhooks:
         name: {{ ( include "webhook-instrumentor.name" . ) }}
         namespace: {{ .Release.Namespace }}
         path: "/mutate"
+        port: 7443
       {{ if not ( and ( .Values.useServiceCAonOCP ) ( .Capabilities.APIVersions.Has "apps.openshift.io/v1/DeploymentConfig") )}}
       {{ if not (hasKey .Values "certs") }}
       caBundle: {{ $ca.Cert | b64enc | quote }}
