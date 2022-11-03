@@ -36,7 +36,7 @@ apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
   {{ if and ( .Values.useServiceCAonOCP ) ( .Capabilities.APIVersions.Has "apps.openshift.io/v1/DeploymentConfig") }}
-  anotations:
+  annotations:
     service.beta.openshift.io/inject-cabundle: 'true'
   {{ end }}
   name: {{ .Values.webhookName }}
