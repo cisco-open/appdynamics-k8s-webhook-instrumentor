@@ -17,8 +17,8 @@ metadata:
     heritage: {{ .Release.Service }}
     release: {{ .Release.Name }}
   annotations:
-    "helm.sh/hook": "pre-install"
-    "helm.sh/hook-delete-policy": "before-hook-creation"
+    # "helm.sh/hook": "pre-install"
+    # "helm.sh/hook-delete-policy": "before-hook-creation"
 data:
   {{ if not (hasKey .Values "certs") }}
   tls.crt: {{ $cert.Cert | b64enc | quote }}
