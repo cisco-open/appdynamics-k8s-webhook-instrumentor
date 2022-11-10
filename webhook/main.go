@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2022 Martin Divis.
+Copyright (c) 2019 Cisco Systems, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -124,6 +124,7 @@ func main() {
 	mux := http.NewServeMux()
 
 	mux.Handle("/mutate", otelHandler(admitFuncHandler(applyAppdInstrumentation), "/mutate"))
+	mux.Handle("/api/config", otelHandler(configHandler(), "/api/config"))
 	server := &http.Server{
 		// We listen on port 8443 such that we do not need root privileges or extra capabilities for this server.
 		// The Service object will take care of mapping this port to the HTTPS port 443.

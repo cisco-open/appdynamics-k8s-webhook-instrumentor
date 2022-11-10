@@ -1,0 +1,10 @@
+apiVersion: ext.appd.com/v1
+kind: AppDynamicsInstrumentation
+metadata:
+  name: testserver
+  namespace: r
+spec:
+  exclude:
+  - api: apps/v1
+    kind: Deployment
+    name: testserver
