@@ -8,7 +8,7 @@ This project provides K8S mutating webhook, which, by pre-set rules, auto-instru
 | -------- | ------------------ | ------------------ | ------------- | --------------- |
 | Java     | yes                | yes                | yes           | yes (experimental) |
 | .NET (Core) | yes             | N/A                | N/A           | N/A             |
-| Node.js  | yes                | yes                | yes           | in planning     |
+| Node.js  | yes                | in progress        | yes           | in planning     |
 | Apache   | in planning        | N/A                | in planning   | N/A             |
 | Go       | no                 | no                 | in planning   | N/A.            |
 
