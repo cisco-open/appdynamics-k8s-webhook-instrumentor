@@ -8,19 +8,27 @@ escapeForSedReplacement() {
     eval $__resultVarName=\'$__result\'
 }
 
+image_name="chrlic-apache-otel-build"
+
 rm -rf opentelemetry-cpp-contrib
 git clone https://github.com/open-telemetry/opentelemetry-cpp-contrib
 cd  opentelemetry-cpp-contrib/instrumentation/otel-webserver-module
 
-docker build . -f docker/centos7/Dockerfile -t chrlic-apache-otel-build
+docker build . -f docker/centos7/Dockerfile -t ${image_name}
 
-docker run -idt --name chrlic-apache-otel-build chrlic-apache-otel-build /bin/sh -c "sleep 100" &
-sleep 10
+# docker run -idt --name chrlic-apache-otel-build chrlic-apache-otel-build /bin/sh -c "sleep 100" &
+# sleep 10
 
-docker cp chrlic-apache-otel-build:/otel-webserver-module/build/opentelemetry-webserver-sdk-x64-linux.tgz ../../../build/
+# docker cp chrlic-apache-otel-build:/otel-webserver-module/build/opentelemetry-webserver-sdk-x64-linux.tgz ../../../build/
 
-docker kill chrlic-apache-otel-build
-docker rm chrlic-apache-otel-build
+# docker kill chrlic-apache-otel-build
+# docker rm chrlic-apache-otel-build
+
+source_path="/otel-webserver-module/build/opentelemetry-webserver-sdk-x64-linux.tgz"
+destination_path="../../../build/"
+container_id=$(docker create "${image_name}")
+docker cp "$container_id:$source_path" "$destination_path"
+docker rm "$container_id"
 
 cd ../../../build
 

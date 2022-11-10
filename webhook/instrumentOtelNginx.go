@@ -174,12 +174,17 @@ func addOtelNginxAgentInitContainer(pod corev1.Pod, instrRules *InstrumentationR
 			Command: []string{"/bin/sh", "-c"},
 			Args: []string{
 				"cp -ar /opt/opentelemetry/* " + OTEL_WEBSERVER_AGENT_DIR + " && " +
+					"export agentLogDir=$(echo \"" + OTEL_WEBSERVER_AGENT_DIR + "/logs\" | sed 's,/,\\\\/,g') && " +
+					"cat " + OTEL_WEBSERVER_AGENT_DIR + "/conf/appdynamics_sdk_log4cxx.xml.template | sed 's/__agent_log_dir__/'${agentLogDir}'/g'  > " + OTEL_WEBSERVER_AGENT_DIR + "/conf/appdynamics_sdk_log4cxx.xml &&" +
 					"echo \"$OPENTELEMETRY_MODULE_CONF\" > " + OTEL_WEBSERVER_CONFIG_DIR + "/opentelemetry_agent.conf && " +
-					"cp " + OTEL_WEBSERVER_CONFIG_DIR + "/nginx.conf " + OTEL_WEBSERVER_CONFIG_DIR + "/nginx.conf.old && " +
-					// Patch nginx.conf - include agent libs + conf
-					OTEL_WEBSERVER_AGENT_DIR + "/nginxConfPatcher " + OTEL_WEBSERVER_CONFIG_DIR + "/nginx.conf.old " +
-					OTEL_WEBSERVER_AGENT_DIR + "/WebServerModule/Nginx/ngx_http_opentelemetry_module.so " +
-					"/etc/nginx/opentelemetry_agent.conf > " + OTEL_WEBSERVER_CONFIG_DIR + "/nginx.conf",
+					"sed -i '1s,^,load_module " + OTEL_WEBSERVER_AGENT_DIR + "/WebServerModule/Nginx/ngx_http_opentelemetry_module.so;\\n,g' " + OTEL_WEBSERVER_CONFIG_DIR + "/nginx.conf && " +
+					"cp " + OTEL_WEBSERVER_CONFIG_DIR + "/opentelemetry_agent.conf " + OTEL_WEBSERVER_CONFIG_DIR + "/conf.d",
+
+				// "cp " + OTEL_WEBSERVER_CONFIG_DIR + "/nginx.conf " + OTEL_WEBSERVER_CONFIG_DIR + "/nginx.conf.old && " +
+				// Patch nginx.conf - include agent libs + conf
+				// OTEL_WEBSERVER_AGENT_DIR + "/nginxConfPatcher " + OTEL_WEBSERVER_CONFIG_DIR + "/nginx.conf.old " +
+				// OTEL_WEBSERVER_AGENT_DIR + "/WebServerModule/Nginx/ngx_http_opentelemetry_module.so " +
+				// "/etc/nginx/opentelemetry_agent.conf > " + OTEL_WEBSERVER_CONFIG_DIR + "/nginx.conf",
 			},
 			ImagePullPolicy: corev1.PullAlways,
 			Env: []corev1.EnvVar{
@@ -216,18 +221,13 @@ func addOtelNginxAgentInitContainer(pod corev1.Pod, instrRules *InstrumentationR
 func getNginxOtelConfig(pod corev1.Pod, instrRules *InstrumentationRule) string {
 	template := `
 NginxModuleEnabled ON;
-# AppDynamics Otel Exporter details
 NginxModuleOtelSpanExporter otlp;
 NginxModuleOtelExporterEndpoint %[1]s;
-NginxModuleOtelSpanProcessor Batch;
-NginxModuleOtelSampler  AlwaysOn;
 NginxModuleServiceName %[2]s;
 NginxModuleServiceNamespace %[3]s;
 NginxModuleServiceInstanceId %[4]s;
-NginxModuleOtelMaxQueueSize 1024;
-NginxModuleOtelScheduledDelayMillis 3000;
-NginxModuleOtelExportTimeoutMillis 30000;
-NginxModuleOtelMaxExportBatchSize 1024;
+NginxModuleResolveBackends ON;
+NginxModuleTraceAsError ON;
 `
 
 	collectorEndpoint := ""
