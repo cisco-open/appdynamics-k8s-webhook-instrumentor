@@ -6,3 +6,4 @@ buildEnv/helm/values-cez.yaml
 testWorkloads/otelcol
 buildEnv/helm/values-se-lab.yaml
 buildEnv/helm/values-test.yaml
+buildEnv/helm/values-ceer1.yaml
