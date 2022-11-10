@@ -4,7 +4,7 @@
 {{- $cert := genSignedCert ( include "webhook-instrumentor.name" . ) nil $altNames (.Values.certValidityDays | int) $ca -}}
 
 ---
-{{ if not ( and ( .Values.useServiceCAonOCP ) ( .Capabilities.APIVersions.Has "apps.openshift.io/v1/DeploymentConfig") )}}
+{{- if not ( and ( .Values.useServiceCAonOCP ) ( .Capabilities.APIVersions.Has "apps.openshift.io/v1/DeploymentConfig") )}}
 apiVersion: v1
 kind: Secret
 type: kubernetes.io/tls
@@ -20,25 +20,25 @@ metadata:
     # "helm.sh/hook": "pre-install"
     # "helm.sh/hook-delete-policy": "before-hook-creation"
 data:
-  {{ if not (hasKey .Values "certs") }}
+  {{- if not (hasKey .Values "certs") }}
   tls.crt: {{ $cert.Cert | b64enc | quote }}
   tls.key: {{ $cert.Key | b64enc | quote }}
   ca.crt: {{ $ca.Cert | b64enc | quote }}
-  {{ else }}
+  {{- else }}
   tls.crt: {{ .Values.certs.tlsCert | quote }}
   tls.key: {{ .Values.certs.tlsKey | quote }}
   ca.crt: {{ .Values.certs.caCert | quote }}
-  {{ end }}
-{{ end }}
+  {{- end }}
+{{- end }}
 
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
-  {{ if and ( .Values.useServiceCAonOCP ) ( .Capabilities.APIVersions.Has "apps.openshift.io/v1/DeploymentConfig") }}
+  {{- if and ( .Values.useServiceCAonOCP ) ( .Capabilities.APIVersions.Has "apps.openshift.io/v1/DeploymentConfig") }}
   annotations:
     service.beta.openshift.io/inject-cabundle: 'true'
-  {{ end }}
+  {{- end }}
   name: {{ .Values.webhookName }}
 webhooks:
   - name: {{ ( printf "%s.%s.svc" (include "webhook-instrumentor.name" .) .Release.Namespace ) }}
@@ -59,21 +59,21 @@ webhooks:
       caBundle: {{ .Values.certs.caCert | quote }}
       {{ end }}
       {{ end }}
-    {{ if .Values.enabledForPodsWithLabels }}
+    {{- if .Values.enabledForPodsWithLabels }}
     objectSelector:
       matchExpressions:
         {{ range $idx, $value := .Values.enabledForPodsWithLabels }}
         - key: {{ $value }}
           operator: Exists
         {{ end }}
-    {{ end }}
+    {{- end }}
     namespaceSelector:
       matchExpressions:
-      {{- if .Values.namespacesEnabled -}}
+      {{- if .Values.namespacesEnabled }}
       - key: kubernetes.io/metadata.name
         operator: In
         values: [{{ range $index, $element := .Values.namespacesEnabled }}{{if $index}},{{end}}"{{$element}}"{{end}}]
-      {{ end }}
+      {{- end }}
       - key: kubernetes.io/metadata.name
         operator: NotIn
         values: [ {{ .Release.Namespace | quote }}{{ if .Values.namespacesDisabled }},{{ range $index, $element := .Values.namespacesDisabled }}{{if $index}},{{end}}"{{$element}}"{{end}}{{end}}]
