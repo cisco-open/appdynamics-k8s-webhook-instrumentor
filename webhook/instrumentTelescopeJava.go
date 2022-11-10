@@ -62,6 +62,7 @@ func javaTelescopeInstrumentation(pod corev1.Pod, instrRule *InstrumentationRule
 	patchOps = append(patchOps, addTelescopeJavaEnvVar(pod, instrRule, 0)...)
 	patchOps = append(patchOps, addContainerEnvVar("OTEL_TRACES_EXPORTER", "otlp", 0))
 	patchOps = append(patchOps, addContainerEnvVar("OTEL_METRICS_EXPORTER", "none", 0))
+	patchOps = append(patchOps, addContainerEnvVar("OTEL_EXPORTER_OTLP_HEADERS", "", 0))
 	patchOps = append(patchOps, addContainerEnvVar("OTEL_RESOURCE_ATTRIBUTES",
 		fmt.Sprintf("service.name=%s,service.namespace=%s", getTierName(pod, instrRule), getApplicationName(pod, instrRule)), 0))
 	patchOps = append(patchOps, addContainerEnvVar("OTEL_SERVICE_NAME", getTierName(pod, instrRule), 0))
@@ -78,11 +79,12 @@ func javaTelescopeInstrumentation(pod corev1.Pod, instrRule *InstrumentationRule
 		if !found {
 			log.Printf("Cannot find OTel collector definition %s\n", instrRule.InjectionRules.OpenTelemetryCollector)
 		} else {
+			// Telescope agent uses HTTP, not GRPC -> port 4318 and path /v1/traces
 			if otelCollConfig.Mode == "sidecar" {
-				patchOps = append(patchOps, addContainerEnvVar("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "http://localhost:4317", 0))
+				patchOps = append(patchOps, addContainerEnvVar("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "http://localhost:4318/v1/traces", 0))
 				patchOps = append(patchOps, addOtelCollSidecar(pod, instrRule, 0)...)
 			} else if (otelCollConfig.Mode == "deployment") || (otelCollConfig.Mode == "external") {
-				patchOps = append(patchOps, addContainerEnvVar("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", fmt.Sprintf("http://%s:4317", otelCollConfig.ServiceName), 0))
+				patchOps = append(patchOps, addContainerEnvVar("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", fmt.Sprintf("http://%s:4318/v1/traces", otelCollConfig.ServiceName), 0))
 			}
 		}
 	}
