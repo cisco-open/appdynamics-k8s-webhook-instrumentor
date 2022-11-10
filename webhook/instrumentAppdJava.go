@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2022 Martin Divis.
+Copyright (c) 2019 Cisco Systems, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -161,13 +161,21 @@ func addJavaAgentInitContainer(pod corev1.Pod, instrRules *InstrumentationRule) 
 	reqCPU, _ := resource.ParseQuantity(instrRules.InjectionRules.ResourceReservation.CPU)
 	reqMem, _ := resource.ParseQuantity(instrRules.InjectionRules.ResourceReservation.Memory)
 
+	argsStr := "cp -ar /opt/appdynamics/. /opt/appdynamics-java"
+	if instrRules.InjectionRules.LogLevel != "" {
+		argsStr += " && "
+		argsStr += "for i in /opt/appdynamics-java/ver*/conf/logging/log4j2.xml; do sed -i 's/level=\"info\"/level=\"" + instrRules.InjectionRules.LogLevel + "\"/g' $i ; done"
+	}
+
 	patchOps = append(patchOps, patchOperation{
 		Op:   "add",
 		Path: "/spec/initContainers/-",
 		Value: corev1.Container{
-			Name:            "appd-agent-attach-java", //TODO
-			Image:           instrRules.InjectionRules.Image,
-			Command:         []string{"cp", "-r", "/opt/appdynamics/.", "/opt/appdynamics-java"},
+			Name:  "appd-agent-attach-java", //TODO
+			Image: instrRules.InjectionRules.Image,
+			// Command:         []string{"cp", "-r", "/opt/appdynamics/.", "/opt/appdynamics-java"},
+			Command:         []string{"/bin/sh", "-c"},
+			Args:            []string{argsStr},
 			ImagePullPolicy: corev1.PullAlways, //TODO
 			Resources: corev1.ResourceRequirements{
 				Limits: corev1.ResourceList{

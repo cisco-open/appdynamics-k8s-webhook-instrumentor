@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2022 Martin Divis.
+Copyright (c) 2019 Cisco Systems, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,10 +21,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
 	"sync"
+	"text/template"
 	"time"
 
 	v1 "k8s.io/api/core/v1"
@@ -58,6 +60,7 @@ type Config struct {
 	AppdCloudConfig       *AppdCloudConfig
 	TelescopeConfig       *TelescopeConfig
 	InstrumentationConfig *InstrumentationConfig
+	FlexMatchTemplate     *template.Template
 	mutex                 sync.Mutex
 }
 
@@ -299,7 +302,13 @@ func updateConfig(obj interface{}) {
 	if telescope == "" {
 		log.Printf("No telescope config specification\n")
 	}
-	log.Printf("telescope config: \n%s\n", appdCloud)
+	log.Printf("telescope config: \n%s\n", telescope)
+
+	flexMatchConfig := data["flexMatch"]
+	if telescope == "" {
+		log.Printf("No flexMatch config specification\n")
+	}
+	log.Printf("FlexMatch config: \n%s\n", flexMatchConfig)
 
 	controllerConfig := &ControllerConfig{}
 	instrumentationConfig := &InstrumentationConfig{}
@@ -357,9 +366,18 @@ func updateConfig(obj interface{}) {
 	config.InstrumentationConfig = instrumentationConfig
 	config.TelescopeConfig = telescopeConfig
 	config.AppdCloudConfig = appdCloudConfig
+	if flexMatchConfig != "" {
+		config.FlexMatchTemplate, err = template.New("test").Parse(flexMatchConfig)
+		if err != nil {
+			log.Printf("Error parsing flex match template %s: %v\n", flexMatchConfig, err)
+			config.FlexMatchTemplate = nil
+		}
+	} else {
+		config.FlexMatchTemplate = nil
+	}
 }
 
-//apply injection rules defaults
+// apply injection rules defaults
 func applyInjectionRulesDefaults(instrumentationConfig *InstrumentationConfig) {
 	for _, instrRule := range *instrumentationConfig {
 		if instrRule.InjectionRules != nil {
@@ -396,7 +414,7 @@ func injectionRuleDefaults(injRules *InjectionRules) *InjectionRules {
 	return injRules
 }
 
-//apply injection templates to instrumentation rules
+// apply injection templates to instrumentation rules
 func applyInjectionTemplates(injectionTemplates *InjectionTemplates, instrumentationConfig *InstrumentationConfig) bool {
 	valid := true
 
@@ -644,4 +662,18 @@ func applyTemplateBool(specific *bool, template *bool) *bool {
 	} else {
 		return specific
 	}
+}
+
+// admitFuncHandler takes an admitFunc and wraps it into a http.Handler by means of calling serveAdmitFunc.
+func configHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "GET":
+			log.Printf("Config GET called\n")
+		case "POST":
+			log.Printf("Config POST called\n")
+		default:
+			log.Printf("Config Unsupported Method called\n")
+		}
+	})
 }

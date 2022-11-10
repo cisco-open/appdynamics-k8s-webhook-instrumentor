@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2022 Martin Divis.
+Copyright (c) 2019 Cisco Systems, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 type TemplateParams struct {
@@ -38,6 +39,8 @@ type TemplateParams struct {
 }
 
 func instrument(pod corev1.Pod, instrRule *InstrumentationRule) ([]patchOperation, error) {
+
+	getADIs(pod.GetNamespace())
 
 	patchOps := []patchOperation{}
 
@@ -452,4 +455,25 @@ func removeDupliciteEnvs(patchOps []patchOperation, containerIdx int) []patchOpe
 	}
 
 	return newPatchOps
+}
+
+func getADIs(namespace string) error {
+	adiGVR := schema.GroupVersionResource{
+		Group:    "ext.appd.com",
+		Version:  "v1",
+		Resource: "appdynamicsinstrumentations",
+	}
+	adis, err := client.Resource(adiGVR).Namespace(namespace).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		log.Printf("Cannot get ADIs in namespace %s - %v\n", namespace, err)
+		return err
+	}
+
+	for _, adi := range adis.Items {
+		log.Printf("ADI - %s - %v\n", adi.GetName(), adi)
+		spec := adi.UnstructuredContent()["spec"].(map[string]interface{})
+		log.Printf("ADI Spec: \nexclude: %v\ninclude: %v\n", spec["exclude"], spec["include"])
+	}
+
+	return err
 }

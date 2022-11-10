@@ -22,3 +22,4 @@ buildEnv/instrumentationImages/otelSDK/webserverAgentImage/conf/opentelemetry_mo
 buildEnv/instrumentationImages/otelSDK/webserverAgentImage/helpers/nginxConfPatcher/nginx_out.conf
 buildEnv/instrumentationImages/otelSDK/webserverAgentImage/helpers/nginxConfPatcher/nginx.conf
 buildEnv/instrumentationImages/otelSDK/webserverAgentImage/Dockerfile-local-build
+testWorkloads/nginxIngress/
