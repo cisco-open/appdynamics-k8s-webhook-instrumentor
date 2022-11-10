@@ -120,6 +120,8 @@ func otelInstrumentation(pod corev1.Pod, instrRule *InstrumentationRule) []patch
 	switch technology {
 	case "java":
 		patchOps = append(patchOps, javaOtelInstrumentation(pod, instrRule)...)
+	case "dotnetcore":
+		patchOps = append(patchOps, dotnetOtelInstrumentation(pod, instrRule)...)
 	case "nodejs":
 		patchOps = append(patchOps, nodejsOtelInstrumentation(pod, instrRule)...)
 	default:
@@ -206,6 +208,22 @@ func addContainerEnvVar(name string, value string, containerIdx int) patchOperat
 			Value: value,
 		},
 	}
+}
+
+func addSpecifiedContainerEnvVars(vars []NameValue, containerIdx int) []patchOperation {
+	patchOps := []patchOperation{}
+
+	for _, envvar := range vars {
+		patchOps = append(patchOps, patchOperation{
+			Op:   "add",
+			Path: fmt.Sprintf("/spec/containers/%d/env/-", containerIdx),
+			Value: corev1.EnvVar{
+				Name:  envvar.Name,
+				Value: envvar.Value,
+			},
+		})
+	}
+	return patchOps
 }
 
 func addNetvizEnvVars(pod corev1.Pod, instrRules *InstrumentationRule, containerIdx int) []patchOperation {

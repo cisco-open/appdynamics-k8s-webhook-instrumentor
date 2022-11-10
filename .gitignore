@@ -12,3 +12,10 @@ buildEnv/helm/values-ceer.yaml
 
 testWorkloads/dotnet/MyFirstApp/obj
 testWorkloads/dotnet/MyFirstApp/bin
+testWorkloads/fso-finance
+testWorkloads/java/upstream/upstream-0.0.1-SNAPSHOT.jar.bck
+testWorkloads/java/downstream/downstream-0.0.1-SNAPSHOT.jar.bck
+buildEnv/instrumentationImages/otelSDK/apacheAgentImage/build/opentelemetry-webserver-sdk-x64-linux.tgz
+buildEnv/instrumentationImages/otelSDK/apacheAgentImage/build/agent
+buildEnv/instrumentationImages/otelSDK/apacheAgentImage/build/opentelemetry-cpp-contrib
+buildEnv/instrumentationImages/otelSDK/apacheAgentImage/conf/opentelemetry_module.conf.template
