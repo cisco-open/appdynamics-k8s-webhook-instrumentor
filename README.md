@@ -13,7 +13,7 @@ This project provides K8S webhook, which, by pre-set rules, auto-instruments Pod
 
 Preferably, use the helm chart
 ```
-helm -namespace <namespace> install <chart-name> .
+helm install --namespace=<namespace> <chart-name> .
 ```
 
 or use
