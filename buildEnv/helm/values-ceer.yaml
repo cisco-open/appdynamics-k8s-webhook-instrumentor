@@ -50,35 +50,37 @@ image:
 # optional AppDynamics controller access information - required if 
 # AppDynamics native/hybrid agents are used
 appdController:
-  host: <instance>.saas.appdynamics.com
+  host: ceer.saas.appdynamics.com
   port: "443"
   isSecure: true
-  accountName: <instance>
-  accessKey: "xxxxxxxxxxx"
+  accountName: ceer
+  accessKey: "3gnmajormowm"
   # useProxy: true
   # proxyHost: proxy.corm.com
   # proxyPort: "8080"
-  otelEndpoint: https://pdx-sls-agent-api.saas.appdynamics.com
-  otelHeaderKey: "wAMj5PEVLZ1q4ZXgKaT7c5pqo1l6ye1a4fvB39UJ"
+  otelEndpoint: https://fra-sls-agent-api.saas.appdynamics.com
+  otelHeaderKey: "67aefade9ee7275aa9aea68eac0c2859856129b9596f69a11078d85cfc70666d"
 
 appdCloud:
 
 telescope:
+  traces_endpoint: https://production.cisco-udp.com/trace-collector
+  token: eps_pYNgrWCQnalzzxD0sRRsAVLHYV-pJWK-CcJKDdZKYnw
 
 # optional OpenTelemetry parameters
 # covers OTel Collector settings for AppDynamics cSaaS, AppDynamics Cloud, and Cisco Telescope
 openTelemetryCollectors:
-  # collector name must be DNS friendly - only lowercase, numbers and "-"
+  # collector name MUST be DNS friendly - only lowercase, numbers and "-"
   deployment-hybrid-agent-default:
-    # mode - one of "sidecar", "deployment", "external" 
+    # mode - one of "sidecar", "deployment", "external"
     mode: deployment
     # replicas is only considered for OTel collector running as a deployment, otherwise ignored
     replicas: 1
     image: 
-      image: docker.io/otel/opentelemetry-collector-contrib:0.53.0
+      image: docker.io/otel/opentelemetry-collector-contrib:0.48.0
       imagePullPolicy: Always
       initImage: docker.io/alpine:latest
-    config:
+    config: >
       receivers:
         otlp:
           protocols:
@@ -96,39 +98,40 @@ openTelemetryCollectors:
             value: "{{ .Values.appdController.host }}"
           - key: appdynamics.controller.port
             action: upsert
-            value: "{{ .Values.appdController.port }}"
+            value: {{ .Values.appdController.port }}
       exporters:
         logging:
           loglevel: debug
-        jaeger:
-          endpoint: "jaeger.default.svc.cluster.local:14250"
-          tls:
-            insecure: true
         # This part says that the opentelemetry collector will send data to OTIS pipeline for AppDynamicas CSaaS.
         otlphttp:
           tls:
             insecure: true
           endpoint: "{{ .Values.appdController.otelEndpoint }}"
           headers: {"x-api-key": "{{ .Values.appdController.otelHeaderKey }}"}
+        otlphttp/telescope:
+          traces_endpoint: {{ .Values.telescope.traces_endpoint }}
+          headers:
+            authorization: "Bearer {{ .Values.telescope.token }}"
+          compression: gzip
       service:
         pipelines:
           traces:
             receivers: [otlp]
             processors: [batch, resource]
-            exporters: [logging, otlphttp, jaeger]
+            exporters: [logging, otlphttp, otlphttp/telescope]
         telemetry:
           logs:
             level: "debug"
   sidecar-hybrid-agent-default:
-    # mode - one of "sidecar", "deployment", "external" 
+    # mode - one of "sidecar", "deployment", "external"
     mode: sidecar
     # replicas is only considered for OTel collector running as a deployment, otherwise ignored
     replicas: 1
     image: 
-      image: docker.io/otel/opentelemetry-collector-contrib:0.53.0
+      image: docker.io/otel/opentelemetry-collector-contrib:0.48.0
       imagePullPolicy: Always
       initImage: docker.io/alpine:latest
-    config:
+    config: >
       receivers:
         otlp:
           protocols:
@@ -146,14 +149,10 @@ openTelemetryCollectors:
             value: "{{ .Values.appdController.host }}"
           - key: appdynamics.controller.port
             action: upsert
-            value: "{{ .Values.appdController.port }}"
+            value: {{ .Values.appdController.port }}
       exporters:
         logging:
           loglevel: debug
-        jaeger:
-          endpoint: "jaeger.default.svc.cluster.local:14250"
-          tls:
-            insecure: true
         # This part says that the opentelemetry collector will send data to OTIS pipeline for AppDynamicas CSaaS.
         otlphttp:
           tls:
@@ -165,7 +164,7 @@ openTelemetryCollectors:
           traces:
             receivers: [otlp]
             processors: [batch, resource]
-            exporters: [logging, otlphttp, jaeger]
+            exporters: [logging, otlphttp]
         telemetry:
           logs:
             level: "debug"
@@ -183,8 +182,6 @@ instrumentationTemplates:
       applicationNameSource: label
       applicationNameLabel: appdApp
       tierNameSource: auto
-      # optional otelNativeAgent: true -> assume native otel image use, no AppD native feed
-      openTelemetryCollectors: deploymentHybridagentDefault
   - name: Dotnet_Default
     injectionRules:
       technology: dotnetcore
@@ -205,17 +202,15 @@ instrumentationRules:
     matchRules:
       namespaceRegex: .*
       labels:
-      - matchLabel: test1
       - language: java
       annotations:
       - annot1: .*
       podNameRegex: .*
     injectionRules:
+      template: Java_Default
       technology: java
       image: appdynamics/java-agent:latest
       javaEnvVar: _JAVA_OPTIONS
-      # technology java + openTelemetryCollector -> use AppD hybrid agent
-      openTelemetryCollector: cSaaS_Collector
   - name: otel-test
     matchRules:
       namespaceRegex: .*
@@ -229,9 +224,7 @@ instrumentationRules:
       technology: java
       image: appdynamics/java-agent:latest
       javaEnvVar: _JAVA_OPTIONS
-      # optional - technology java + openTelemetryCollector -> use AppD hybrid agent with OTel
-      openTelemetryCollector: cSaaS_Collector
-  - name: test2
+  - name: java-otel-test
     matchRules:
       namespaceRegex: .*
       labels:
@@ -243,6 +236,8 @@ instrumentationRules:
       technology: java
       image: appdynamics/java-agent:latest
       javaEnvVar: _JAVA_OPTIONS
+      # optional otelNativeAgent: true -> assume native otel image use, no AppD native feed
+      openTelemetryCollector: deployment-hybrid-agent-default
   - name: dotnet1
     matchRules:
       namespaceRegex: .*

@@ -1,3 +1,19 @@
+/*
+Copyright (c) 2022 Martin Divis.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package main
 
 import (
@@ -23,26 +39,94 @@ func instrument(pod corev1.Pod, instrRule *InstrumentationRule) ([]patchOperatio
 		})
 	}
 
+	_, provider := getTechnologyAndProvider(instrRule.InjectionRules.Technology)
+
+	switch provider {
+	case "appd":
+		patchOps = append(patchOps, appdInstrumentation(pod, instrRule)...)
+	case "telescope":
+		patchOps = append(patchOps, telescopeInstrumentation(pod, instrRule)...)
+	case "otel":
+		patchOps = append(patchOps, otelInstrumentation(pod, instrRule)...)
+	}
+
+	return patchOps, nil
+}
+
+func appdInstrumentation(pod corev1.Pod, instrRule *InstrumentationRule) []patchOperation {
+
+	patchOps := []patchOperation{}
+
 	patchOps = append(patchOps, patchOperation{
 		Op:    "add",
 		Path:  "/metadata/annotations/APPD_INSTRUMENTATION_VIA_RULE",
 		Value: string(instrRule.Name),
 	})
 
-	switch instrRule.InjectionRules.Technology {
+	technology, _ := getTechnologyAndProvider(instrRule.InjectionRules.Technology)
+
+	switch technology {
 	case "java":
-		patchOps = append(patchOps, javaInstrumentation(pod, instrRule)...)
+		patchOps = append(patchOps, javaAppdInstrumentation(pod, instrRule)...)
 	case "dotnetcore":
-		patchOps = append(patchOps, dotnetInstrumentation(pod, instrRule)...)
+		patchOps = append(patchOps, dotnetAppdInstrumentation(pod, instrRule)...)
 	case "nodejs":
-		patchOps = append(patchOps, nodejsInstrumentation(pod, instrRule)...)
+		patchOps = append(patchOps, nodejsAppdInstrumentation(pod, instrRule)...)
 	case "apache":
-		patchOps = append(patchOps, apacheInstrumentation(pod, instrRule)...)
+		patchOps = append(patchOps, apacheAppdInstrumentation(pod, instrRule)...)
 	default:
 		patchOps = append(patchOps, getInstrumentationStatusPatch("FAILED", "Technology for injection not specified or unknown")...)
 	}
 
-	return patchOps, nil
+	return patchOps
+}
+
+func telescopeInstrumentation(pod corev1.Pod, instrRule *InstrumentationRule) []patchOperation {
+
+	patchOps := []patchOperation{}
+
+	patchOps = append(patchOps, patchOperation{
+		Op:    "add",
+		Path:  "/metadata/annotations/TELESCOPE_INSTRUMENTATION_VIA_RULE",
+		Value: string(instrRule.Name),
+	})
+
+	technology, _ := getTechnologyAndProvider(instrRule.InjectionRules.Technology)
+
+	switch technology {
+	case "java":
+		patchOps = append(patchOps, javaTelescopeInstrumentation(pod, instrRule)...)
+	case "nodejs":
+		patchOps = append(patchOps, nodejsTelescopeInstrumentation(pod, instrRule)...)
+	default:
+		patchOps = append(patchOps, getInstrumentationStatusPatch("FAILED", "Technology for injection not specified or unknown")...)
+	}
+
+	return patchOps
+}
+
+func otelInstrumentation(pod corev1.Pod, instrRule *InstrumentationRule) []patchOperation {
+
+	patchOps := []patchOperation{}
+
+	patchOps = append(patchOps, patchOperation{
+		Op:    "add",
+		Path:  "/metadata/annotations/OTEL_INSTRUMENTATION_VIA_RULE",
+		Value: string(instrRule.Name),
+	})
+
+	technology, _ := getTechnologyAndProvider(instrRule.InjectionRules.Technology)
+
+	switch technology {
+	case "java":
+		patchOps = append(patchOps, javaOtelInstrumentation(pod, instrRule)...)
+	case "nodejs":
+		patchOps = append(patchOps, nodejsOtelInstrumentation(pod, instrRule)...)
+	default:
+		patchOps = append(patchOps, getInstrumentationStatusPatch("FAILED", "Technology for injection not specified or unknown")...)
+	}
+
+	return patchOps
 }
 
 func getApplicationName(pod corev1.Pod, instrRule *InstrumentationRule) string {
@@ -187,4 +271,17 @@ func reuseNodeNames(instrRules *InstrumentationRule) bool {
 		}
 	}
 	return true
+}
+
+func getTechnologyAndProvider(technologyString string) (string, string) {
+	technology := ""
+	provider := "appd"
+	elems := strings.Split(technologyString, "/")
+	if len(elems) == 1 {
+		technology = elems[0]
+	} else {
+		technology = elems[0]
+		provider = elems[1]
+	}
+	return technology, provider
 }
