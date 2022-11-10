@@ -1,0 +1,13 @@
+
+namespace: webhook1
+serviceaccount: webhook-instrumentor
+deploymentName: webhook-server
+webhookName: webhook-appd
+
+service:
+  type: ClusterIP
+  port: 443
+
+image:
+  image: docker.io/chrlic/webhook-test:latest
+  pullPolicy: Always

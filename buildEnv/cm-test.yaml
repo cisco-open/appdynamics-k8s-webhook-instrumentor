@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: webhook-instrumentor-config
+data:
+  controller: |
+    host: ceer.saas.appdynamics.com
+    port: "443"
+    isSecure: true
+    accountName: ceer
+    accessKey: "3gnmajormowm"
+  instrumentation: |
+    - name: test1
+      matchRules:
+        namespaceRegex: .*
+        labels:
+        - label1: veslo
+        - language: java
+        annotations:
+        - annot1: .*
+        podNameRegex: .*
+      injectionRules:
+        technology: java
+        image: appdynamics/java-agent:latest
+        javaEnvVar: _JAVA_OPTIONS
+    - name: test2
+      matchRules:
+        namespaceRegex: .*
+        labels:
+        - label1: veslo
+        - language: java
+        podNameRegex: .*
+      injectionRules:
+        template: Java_Default
+        technology: java
+        image: appdynamics/java-agent:latest
+        javaEnvVar: _JAVA_OPTIONS
+  injectionTemplates: |
+    - name: Java_Default
+      injectionRules:
+        technology: java
+        image: appdynamics/java-agent:latest
+        javaEnvVar: JAVA_TOOL_OPTIONS
+        applicationNameSource: label
+        applicationNameLabel: app
+        tierNameSource: auto
