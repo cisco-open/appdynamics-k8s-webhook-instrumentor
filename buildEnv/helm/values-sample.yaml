@@ -21,7 +21,7 @@ service:
   port: 443
 
 image:
-  image: docker.io/chrlic/appd-webhook-instrumentor:v1.0.1
+  image: docker.io/chrlic/appd-webhook-instrumentor:v1.0.2
   pullPolicy: Always
 
 appdController:
@@ -30,6 +30,9 @@ appdController:
   isSecure: true
   accountName: <instance>
   accessKey: "xxxxxxxxxxx"
+  # useProxy: true
+  # proxyHost: proxy.corm.com
+  # proxyPort: "8080"
 
 instrumentationTemplates:
   - name: Java_Default
