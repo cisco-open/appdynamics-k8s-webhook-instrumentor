@@ -43,11 +43,12 @@ func javaInstrumentation(pod corev1.Pod, instrRule *InstrumentationRule) []patch
 	}
 
 	patchOps = append(patchOps, addControllerEnvVars(0)...)
-	patchOps = append(patchOps, addJavaEnvVar(pod, instrRule, 0))
+	patchOps = append(patchOps, addJavaEnvVar(pod, instrRule, 0)...)
 	patchOps = append(patchOps, addContainerEnvVar("APPDYNAMICS_AGENT_APPLICATION_NAME", getApplicationName(pod, instrRule), 0))
 	patchOps = append(patchOps, addContainerEnvVar("APPDYNAMICS_AGENT_TIER_NAME", getTierName(pod, instrRule), 0))
-	patchOps = append(patchOps, addContainerEnvVar("APPDYNAMICS_AGENT_REUSE_NODE_NAME_PREFIX", getTierName(pod, instrRule), 0))
-
+	if reuseNodeNames(instrRule) {
+		patchOps = append(patchOps, addContainerEnvVar("APPDYNAMICS_AGENT_REUSE_NODE_NAME_PREFIX", getTierName(pod, instrRule), 0))
+	}
 	patchOps = append(patchOps, addNetvizEnvVars(pod, instrRule, 0)...)
 
 	patchOps = append(patchOps, addJavaAgentVolumeMount(pod, instrRule, 0)...)
@@ -59,15 +60,35 @@ func javaInstrumentation(pod corev1.Pod, instrRule *InstrumentationRule) []patch
 	return patchOps
 }
 
-func addJavaEnvVar(pod corev1.Pod, instrRules *InstrumentationRule, containerIdx int) patchOperation {
-	return patchOperation{
+func addJavaEnvVar(pod corev1.Pod, instrRules *InstrumentationRule, containerIdx int) []patchOperation {
+	patchOps := []patchOperation{}
+
+	patchOps = append(patchOps, patchOperation{
 		Op:   "add",
 		Path: fmt.Sprintf("/spec/containers/%d/env/-", containerIdx),
 		Value: corev1.EnvVar{
 			Name:  instrRules.InjectionRules.JavaEnvVar,
 			Value: getJavaOptions(pod, instrRules),
 		},
+	})
+
+	if !reuseNodeNames(instrRules) {
+		patchOps = append(patchOps, patchOperation{
+			Op:   "add",
+			Path: fmt.Sprintf("/spec/containers/%d/env/-", containerIdx),
+			Value: corev1.EnvVar{
+				Name: "APPDYNAMICS_AGENT_NODE_NAME",
+				ValueFrom: &corev1.EnvVarSource{
+					FieldRef: &corev1.ObjectFieldSelector{
+						APIVersion: "v1",
+						FieldPath:  "metadata.name",
+					},
+				},
+			},
+		})
 	}
+
+	return patchOps
 }
 
 func getJavaOptions(pod corev1.Pod, instrRules *InstrumentationRule) string {
@@ -79,7 +100,9 @@ func getJavaOptions(pod corev1.Pod, instrRules *InstrumentationRule) string {
 	}
 
 	javaOpts += "-Dappdynamics.agent.accountAccessKey=$(APPDYNAMICS_AGENT_ACCOUNT_ACCESS_KEY) "
-	javaOpts += "-Dappdynamics.agent.reuse.nodeName=true "
+	if reuseNodeNames(instrRules) {
+		javaOpts += "-Dappdynamics.agent.reuse.nodeName=true "
+	}
 	javaOpts += "-Dappdynamics.socket.collection.bci.enable=true "
 	javaOpts += "-javaagent:/opt/appdynamics-java/javaagent.jar "
 	javaOpts += instrRules.InjectionRules.JavaCustomConfig

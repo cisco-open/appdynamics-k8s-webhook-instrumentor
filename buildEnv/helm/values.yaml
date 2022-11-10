@@ -35,7 +35,7 @@ appdController:
   isSecure: true
   accountName: ceer
   accessKey: "3gnmajormowm"
-  useProxy: true
+  useProxy: false
   proxyHost: proxy.esl.cisco.com
   proxyPort: "80"
 
@@ -58,14 +58,14 @@ instrumentationTemplates:
       tierNameSource: auto
   - name: Nodejs_Default
     injectionRules:
-      technology: dotnetcore
+      technology: nodejs
       image: appdynamics/nodejs-agent:22.5.0-16-stretch-slim
       applicationNameSource: label
       applicationNameLabel: appdApp
       tierNameSource: auto
 
 instrumentationRules:
-  - name: test1
+  - name: javaTest1
     matchRules:
       namespaceRegex: .*
       labels:
@@ -78,7 +78,7 @@ instrumentationRules:
       technology: java
       image: appdynamics/java-agent:latest
       javaEnvVar: _JAVA_OPTIONS
-  - name: test2
+  - name: javaTest2
     matchRules:
       namespaceRegex: .*
       labels:
@@ -90,6 +90,7 @@ instrumentationRules:
       technology: java
       image: appdynamics/java-agent:latest
       javaEnvVar: _JAVA_OPTIONS
+      usePodNameForNodeName: true
   - name: dotnet1
     matchRules:
       namespaceRegex: .*

@@ -138,7 +138,7 @@ func addNodejsAgentInitContainer(pod corev1.Pod, instrRules *InstrumentationRule
 			},
 			VolumeMounts: []corev1.VolumeMount{{
 				MountPath: "/opt/appdynamics-nodejs", //TODO
-				Name:      "appd-agent-repo-nodejse", //TODO
+				Name:      "appd-agent-repo-nodejs",  //TODO
 			}},
 		},
 	})

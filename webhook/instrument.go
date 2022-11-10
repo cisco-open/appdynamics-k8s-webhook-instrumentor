@@ -179,3 +179,12 @@ func addTemplate(pod corev1.Pod, instrRules *InstrumentationRule, containerIdx i
 	patchOps := []patchOperation{}
 	return patchOps
 }
+
+func reuseNodeNames(instrRules *InstrumentationRule) bool {
+	if instrRules.InjectionRules.UsePodNameForNodeName != nil {
+		if *instrRules.InjectionRules.UsePodNameForNodeName {
+			return false
+		}
+	}
+	return true
+}
