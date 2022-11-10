@@ -54,7 +54,9 @@ type ControllerConfig struct {
 	UseProxy           bool   `json:"useProxy,omitempty" yaml:"useProxy,omitempty"`
 	ProxyHost          string `json:"proxyHost,omitempty" yaml:"proxyHost,omitempty"`
 	ProxyPort          string `json:"proxyPort,omitempty" yaml:"proxyPort,omitempty"`
-	// ProxyUser          string `json:"proxyUser,omitempty" yaml:"proxyUser,omitempty"`
+	ProxyUser          string `json:"proxyUser,omitempty" yaml:"proxyUser,omitempty"`
+	ProxyPassword      string `json:"proxyPassword,omitempty" yaml:"proxyPassword,omitempty"`
+	ProxyDomain        string `json:"proxyDomain,omitempty" yaml:"proxyDomain,omitempty"`
 }
 
 type MatchRules struct {
