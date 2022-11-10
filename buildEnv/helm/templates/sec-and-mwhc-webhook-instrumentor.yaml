@@ -1,8 +1,10 @@
-{{- $ca := genCA "webhook-change-group-webhook-ca" (.Values.certValidityDays | int) }}
+
+{{- $ca := genCA "webhook-change-group-webhook-ca" (.Values.certValidityDays | int) -}}
 {{- $altNames := list ( printf "%s.%s" (include "webhook-instrumentor.name" .) .Release.Namespace ) ( printf "%s.%s.svc" (include "webhook-instrumentor.name" .) .Release.Namespace ) -}}
 {{- $cert := genSignedCert ( include "webhook-instrumentor.name" . ) nil $altNames 365 $ca -}}
 
 ---
+{{ if not ( and ( .Values.useServiceCAonOCP ) ( .Capabilities.APIVersions.Has "apps.openshift.io/v1/DeploymentConfig") )}}
 apiVersion: v1
 kind: Secret
 type: kubernetes.io/tls
@@ -18,28 +20,55 @@ metadata:
     "helm.sh/hook": "pre-install"
     "helm.sh/hook-delete-policy": "before-hook-creation"
 data:
+  {{ if not (hasKey .Values "certs") }}
   tls.crt: {{ $cert.Cert | b64enc | quote }}
   tls.key: {{ $cert.Key | b64enc | quote }}
   ca.crt: {{ $ca.Cert | b64enc | quote }}
+  {{ else }}
+  tls.crt: {{ .Values.certs.tlsCert | quote }}
+  tls.key: {{ .Values.certs.tlsKey | quote }}
+  ca.crt: {{ .Values.certs.caCert | quote }}
+  {{ end }}
+{{ end }}
 
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
+  {{ if and ( .Values.useServiceCAonOCP ) ( .Capabilities.APIVersions.Has "apps.openshift.io/v1/DeploymentConfig") }}
+  anotations:
+    service.beta.openshift.io/inject-cabundle: 'true'
+  {{ end }}
   name: {{ .Values.webhookName }}
 webhooks:
   - name: {{ ( printf "%s.%s.svc" (include "webhook-instrumentor.name" .) .Release.Namespace ) }}
     sideEffects: None
     admissionReviewVersions: ["v1", "v1beta1"]
+    timeoutSeconds: {{ .Values.timeoutSeconds | int }}
+    failurePolicy: {{ .Values.failurePolicy }}
     clientConfig:
       service:
         name: {{ ( include "webhook-instrumentor.name" . ) }}
         namespace: {{ .Release.Namespace }}
         path: "/mutate"
+      {{ if not ( and ( .Values.useServiceCAonOCP ) ( .Capabilities.APIVersions.Has "apps.openshift.io/v1/DeploymentConfig") )}}
+      {{ if not (hasKey .Values "certs") }}
       caBundle: {{ $ca.Cert | b64enc | quote }}
+      {{ else }}
+      caBundle: {{ .Values.certs.caCert | quote }}
+      {{ end }}
+      {{ end }}
+    {{ if .Values.enabledForPodsWithLabels }}
+    objectSelector:
+      matchExpressions:
+        {{ range $idx, $value := .Values.enabledForPodsWithLabels }}
+        - key: {{ $value }}
+          operator: Exists
+        {{ end }}
+    {{ end }}
     namespaceSelector:
       matchExpressions:
-      {{ if .Values.namespacesEnabled }}
+      {{- if .Values.namespacesEnabled -}}
       - key: kubernetes.io/metadata.name
         operator: In
         values: [{{ range $index, $element := .Values.namespacesEnabled }}{{if $index}},{{end}}"{{$element}}"{{end}}]

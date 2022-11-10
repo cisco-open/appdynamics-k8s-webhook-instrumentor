@@ -7,24 +7,47 @@ webhookName: webhook-appd
 # namespacesEnabled:
 # - ns1
 # - ns2
+#
 # namespacesDisabled is optional list of namespaces, where webhook would not be applied. 
 # If missing, all namespaces will be enabled, except kubernetes system namespaces 
 # (and namespace where the webook itself is running)
 # namespacesDisabled:
 # - ns3
+#
+# enabledForPodsWithLabels is optional safety belt to try to instrument only pods
+# having set labels to a specific values
+# enabledForPodsWithLabels:
+#   appdInstr: do
+#
 # number of replicas for webhook server
 replicas: 1
 certValidityDays: 1024
+# failure policy can be Fail or Ignore. 
+# Ignore is safer - should the webhook fail or be unresponsive for timeoutSeconds, pod gets created unchanged
+timeoutSeconds: 2
+failurePolicy: Ignore
+
+# optional - certs information. If missing, certs will be generated dynamically
+# certs:
+#   tlsCert:
+#   tlsKey:
+#   caCert:
+
+# optional - useServiceCAonOCP: true - if set, on OpenShift, Service CA certificates will be used
+useServiceCAonOCP: true
 
 # service type and port for webhook server
 service:
   type: ClusterIP
   port: 443
 
+# image for pods running the webhook functionality
 image:
   image: docker.io/chrlic/appd-webhook-instrumentor:v1.0.2
   pullPolicy: Always
 
+# optional AppDynamics controller access information - required if 
+# AppDynamics native/hybrid agents are used
 appdController:
   host: <instance>.saas.appdynamics.com
   port: "443"
@@ -35,15 +58,55 @@ appdController:
   # proxyHost: proxy.corm.com
   # proxyPort: "8080"
 
+# optional OpenTelemetry parameters
+# covers OTel Collector settings for AppDynamics cSaaS, AppDynamics Cloud, and Cisco Telescope
+openTelemetryCollectors:
+  - name: cSaaS_Collector
+    # optional - injectAsSidecar: true -> each pod will have an OTel collector as a sidecar 
+    injectAsSidecar: false
+    # replicas is only considered for OTel collector running as a service, otherwise ignored
+    replicas: 1
+    # one of csaas, cloud, telescope
+    backendType: csaas
+    endpoint: https://pdx-sls-agent-api.saas.appdynamics.com
+    apiKey: xxxxxxxxxxxxx
+    # optional additional resource attributes - following for example sets language to Go
+    resourceAttributes:
+    - key: telemetry.sdk.language
+      action: upsert
+      value: go
+  - name: Cloud_Collector
+    # optional - injectAsSidecar: true -> each pod will have an OTel collector as a sidecar 
+    injectAsSidecar: false
+    replicas: 1
+    backendType: cloud
+    endpoint: xxxxxxxxxxxxx
+    # protocol = http or grpc
+    protocol: http
+    clientId: xxxxxxxxxxxxx
+    clientSecret: xxxxxxxxxxxxx
+    tokenUrl: xxxxxxxxxxxxx
+    timeout: 1m
+  - name: Telescope_Collector
+    # optional - injectAsSidecar: true -> each pod will have an OTel collector as a sidecar 
+    injectAsSidecar: false
+    replicas: 1
+    backentType: telescope
+    endpoint: https://production.cisco-udp.com/trace-collector
+    bearerToken: xxxxxxxxxxxxx
+
 instrumentationTemplates:
   - name: Java_Default
     injectionRules:
+      # technology = java | dotnetcore | nodejs 
       technology: java
       image: appdynamics/java-agent:latest
       javaEnvVar: JAVA_TOOL_OPTIONS
       applicationNameSource: label
       applicationNameLabel: appdApp
       tierNameSource: auto
+      # optional otelNativeAgent: true -> assume native otel image use, no AppD native feed
+      otelNativeAgent: false
   - name: Dotnet_Default
     injectionRules:
       technology: dotnetcore
@@ -73,6 +136,23 @@ instrumentationRules:
       technology: java
       image: appdynamics/java-agent:latest
       javaEnvVar: _JAVA_OPTIONS
+      # technology java + openTelemetryCollector -> use AppD hybrid agent
+      openTelemetryCollector: cSaaS_Collector
+  - name: otel-test
+    matchRules:
+      namespaceRegex: .*
+      labels:
+      - otel: native
+      - language: java
+      annotations:
+      - annot1: .*
+      podNameRegex: .*
+    injectionRules:
+      technology: java
+      image: appdynamics/java-agent:latest
+      javaEnvVar: _JAVA_OPTIONS
+      # technology java + openTelemetryCollector -> use AppD hybrid agent
+      openTelemetryCollector: cSaaS_Collector
   - name: test2
     matchRules:
       namespaceRegex: .*
