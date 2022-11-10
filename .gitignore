@@ -10,3 +10,5 @@ buildEnv/helm/values-test.yaml
 buildEnv/helm/values-ceer1.yaml
 buildEnv/helm/values-ceer.yaml
 
+testWorkloads/dotnet/MyFirstApp/obj
+testWorkloads/dotnet/MyFirstApp/bin
