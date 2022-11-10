@@ -4,22 +4,22 @@ metadata:
   name: webhook-instrumentor-config
   namespace: {{ .Release.Namespace }}
 data:
-  {{ if .Values.appdController }}
+  {{- if .Values.appdController }}
   controller: | {{ printf "\n" }}
     {{- toYaml .Values.appdController | indent 4 }}
-  {{ end }}
-  {{ if .Values.appdController }}
+  {{- end }}
+  {{- if .Values.appdController }}
   flexMatch: "{{ .Values.flexMatch }}"
-  {{ end }}
+  {{- end }}
   instrumentation: | {{ printf "\n" }}
     {{- toYaml .Values.instrumentationRules | indent 4 }}
   injectionTemplates: | {{ printf "\n" }}
     {{- toYaml .Values.instrumentationTemplates | indent 4 }}
-  {{ if .Values.appdCloud }}
+  {{- if .Values.appdCloud }}
   appdCloud: | {{ printf "\n" }}
     {{- toYaml .Values.appdCloud | indent 4 }}
-  {{ end }}
-  {{ if .Values.telescope }}
+  {{- end }}
+  {{- if .Values.telescope }}
   telescope: | {{ printf "\n" }}
     {{- toYaml .Values.telescope | indent 4 }}
-  {{ end }}
+  {{- end }}
