@@ -1,3 +1,19 @@
+/*
+Copyright (c) 2022 Martin Divis.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package main
 
 import (
@@ -39,6 +55,8 @@ type Config struct {
 	MyNamespace           string
 	ConfigMapName         string
 	ControllerConfig      *ControllerConfig
+	AppdCloudConfig       *AppdCloudConfig
+	TelescopeConfig       *TelescopeConfig
 	InstrumentationConfig *InstrumentationConfig
 	mutex                 sync.Mutex
 }
@@ -57,6 +75,14 @@ type ControllerConfig struct {
 	ProxyUser          string `json:"proxyUser,omitempty" yaml:"proxyUser,omitempty"`
 	ProxyPassword      string `json:"proxyPassword,omitempty" yaml:"proxyPassword,omitempty"`
 	ProxyDomain        string `json:"proxyDomain,omitempty" yaml:"proxyDomain,omitempty"`
+	OtelEndpoint       string `json:"otelEndpoint,omitempty" yaml:"otelEndpoint,omitempty"`
+	OtelHeaderKey      string `json:"otelHeaderKey,omitempty" yaml:"otelHeaderKey,omitempty"`
+}
+
+type AppdCloudConfig struct {
+}
+
+type TelescopeConfig struct {
 }
 
 type MatchRules struct {
@@ -87,6 +113,7 @@ type InjectionRules struct {
 	ResourceReservation       *ResourceReservation `json:"resourceReservation,omitempty" yaml:"resourceReservation,omitempty"`
 	LogLevel                  string               `json:"logLevel,omitempty" yaml:"logLevel,omitempty"`
 	NetvizPort                string               `json:"netvizPort,omitempty" yaml:"netvizPort,omitempty"`
+	OpenTelemetryCollector    string               `json:"openTelemetryCollector,omitempty" yaml:"openTelemetryCollector,omitempty"`
 }
 
 type ResourceReservation struct {
@@ -221,9 +248,15 @@ func updateConfig(obj interface{}) {
 		return
 	}
 	fmt.Printf("ConfigMap Name: %s\n", cm.GetName())
-	if cm.Name != config.ConfigMapName {
+	if cm.Name != config.ConfigMapName && cm.Name != OTEL_COLL_CONFIG_MAP_NAME {
 		return
 	}
+
+	if cm.Name == OTEL_COLL_CONFIG_MAP_NAME {
+		loadOtelConfig(cm.Data)
+		return
+	}
+
 	data := cm.Data
 
 	controller := data["controller"]
@@ -246,9 +279,23 @@ func updateConfig(obj interface{}) {
 	}
 	fmt.Printf("Injection templates:\n%s\n", templates)
 
+	appdCloud := data["appdCloud"]
+	if appdCloud == "" {
+		log.Printf("No appdCloud config specification\n")
+	}
+	log.Printf("apodCloud config: \n%s\n", appdCloud)
+
+	telescope := data["telescope"]
+	if telescope == "" {
+		log.Printf("No telescope config specification\n")
+	}
+	log.Printf("telescope config: \n%s\n", appdCloud)
+
 	controllerConfig := &ControllerConfig{}
 	instrumentationConfig := &InstrumentationConfig{}
 	injectionTemplates := &InjectionTemplates{}
+	appdCloudConfig := &AppdCloudConfig{}
+	telescopeConfig := &TelescopeConfig{}
 
 	err := yaml.Unmarshal([]byte(controller), controllerConfig)
 	if err != nil {
@@ -265,7 +312,19 @@ func updateConfig(obj interface{}) {
 		log.Printf("Error parsing injection templates configuration: %v\n", err)
 		return
 	}
-	fmt.Printf("Controller Config:\n%v\nInstrumentation Config:\n%v\nInjection Templates:\n%v\n", *controllerConfig, *instrumentationConfig, *injectionTemplates)
+	err = yaml.Unmarshal([]byte(appdCloud), appdCloudConfig)
+	if err != nil {
+		log.Printf("Error parsing injection appdCloud configuration: %v\n", err)
+		return
+	}
+	err = yaml.Unmarshal([]byte(telescope), telescopeConfig)
+	if err != nil {
+		log.Printf("Error parsing injection telescope configuration: %v\n", err)
+		return
+	}
+
+	fmt.Printf("Controller Config:\n%v\nInstrumentation Config:\n%v\nInjection Templates:\n%v\nAppD Cloud:\n%v\nTelescope:\n%v\n",
+		*controllerConfig, *instrumentationConfig, *injectionTemplates, *appdCloudConfig, *telescopeConfig)
 
 	// validations
 	valid := true
@@ -361,6 +420,7 @@ func applyInjectionTemplates(injectionTemplates *InjectionTemplates, instrumenta
 				injRules.ResourceReservation.Memory = applyTemplateString(injRules.ResourceReservation.Memory, injTempRules.ResourceReservation.Memory)
 			}
 			injRules.NetvizPort = applyTemplateString(injRules.NetvizPort, injTempRules.NetvizPort)
+			injRules.OpenTelemetryCollector = applyTemplateString(injRules.OpenTelemetryCollector, injRules.OpenTelemetryCollector)
 			///
 		}
 	}
