@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 
@@ -13,10 +14,20 @@ func instrument(pod corev1.Pod, instrRule *InstrumentationRule) ([]patchOperatio
 
 	patchOps := []patchOperation{}
 
+	log.Printf("Using instrumentation rule : %s", instrRule.Name)
+
+	if len(pod.Annotations) == 0 {
+		patchOps = append(patchOps, patchOperation{
+			Op:    "add",
+			Path:  "/metadata/annotations",
+			Value: make(map[string]string),
+		})
+	}
+
 	patchOps = append(patchOps, patchOperation{
 		Op:    "add",
 		Path:  "/metadata/annotations/APPD_INSTRUMENTATION_VIA_RULE",
-		Value: instrRule.Name,
+		Value: string(instrRule.Name),
 	})
 
 	switch instrRule.InjectionRules.Technology {

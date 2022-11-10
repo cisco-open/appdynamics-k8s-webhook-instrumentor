@@ -39,9 +39,14 @@ webhooks:
       caBundle: {{ $ca.Cert | b64enc | quote }}
     namespaceSelector:
       matchExpressions:
+      {{ if .Values.namespacesEnabled }}
+      - key: kubernetes.io/metadata.name
+        operator: In
+        values: [{{ range $index, $element := .Values.namespacesEnabled }}{{if $index}},{{end}}"{{$element}}"{{end}}]
+      {{ end }}
       - key: kubernetes.io/metadata.name
         operator: NotIn
-        values: [ {{ .Release.Namespace | quote }} ]
+        values: [ {{ .Release.Namespace | quote }}{{ if .Values.namespacesDisabled }},{{ range $index, $element := .Values.namespacesDisabled }}{{if $index}},{{end}}"{{$element}}"{{end}}{{end}}]
     rules:
       - operations: [ "CREATE" ]
         apiGroups: [""]

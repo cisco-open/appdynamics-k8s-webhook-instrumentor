@@ -1,0 +1,45 @@
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: r
+  name: downstream
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: downstream
+  template:
+    metadata:
+      annotations:
+        test: testval
+      labels:
+        app: downstream
+        appdApp: MD-instr-wh
+        appdInstr: do
+        language: java
+    spec:
+      containers:
+      - name: downstream
+        image: chrlic/java-test-downstream:v1.0
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8181
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: r
+  name: downstream
+  labels:
+    run: downstream
+spec:
+  ports:
+  - port: 8282
+    targetPort: 8181
+    protocol: TCP
+  selector:
+    app: downstream
+  type: LoadBalancer

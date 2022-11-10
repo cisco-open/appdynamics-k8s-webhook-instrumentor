@@ -1,0 +1,50 @@
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: r
+  name: upstream
+  labels:
+    app: MD-instr-wh
+    appdInstr: do
+    language: java
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: upstream
+  template:
+    metadata:
+      labels:
+        app: upstream
+        appdApp: MD-instr-wh
+        appdInstr: do
+        language: java
+    spec:
+      containers:
+      - name: upstream
+        image: chrlic/java-test-upstream:v1.0
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8181
+        env:
+        - name: DOWNSTREAM_HTTP_URL
+          value: http://downstream.r.svc.cluster.local:8282/downstream/hello
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: r
+  name: upstream
+  labels:
+    run: upstream
+spec:
+  ports:
+  - port: 8383
+    targetPort: 8181
+    protocol: TCP
+  selector:
+    app: upstream
+  type: LoadBalancer
