@@ -75,6 +75,11 @@ func applyAppdInstrumentation(req *admission.AdmissionRequest) ([]patchOperation
 
 	config.mutex.Lock()
 	defer config.mutex.Unlock()
+
+	// at this time, pod does not have metadata.namespace assigned
+	// but we need it. since this does not get propagated anywhere
+	// it's supplied here into the pod data
+	pod.Namespace = req.Namespace
 	patches, err := instrument(pod, instrumentationRule)
 
 	return patches, err
