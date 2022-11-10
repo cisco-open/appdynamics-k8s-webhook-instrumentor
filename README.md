@@ -4,10 +4,10 @@ This project provides K8S mutating webhook, which, by pre-set rules, auto-instru
 
 ## Supported Agents
 
-| Language | AppDynamics Native | AppDynamics Hybrid | OpenTelemetry | Cisco Telescope |
-| -------- | ------------------ | ------------------ | ------------- | --------------- |
-| Java     | :heavy_check_mark:               | yes                | yes           | yes (experimental) |
-| .NET (Core) | yes             | N/A                | N/A           | N/A             |
+| Language    | AppDynamics Native | AppDynamics Hybrid | OpenTelemetry      | Cisco Telescope    |
+| ----------- | ------------------ | ------------------ | ------------------ | ------------------ |
+| Java        | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| .NET (Core) | :white_check_mark: | :x:                | :construction:     | :x:                |
 | Node.js  | yes                | in progress        | yes           | in planning     |
 | Apache   | in planning        | N/A                | in planning   | N/A             |
 | Go       | no                 | no                 | in planning   | N/A.            |
