@@ -1,0 +1,52 @@
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: r
+  name: my-apache
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: my-apache
+  template:
+    metadata:
+      annotations:
+        test: testval
+      labels:
+        app: my-apache
+        appdApp: MD-instr-wh
+        appdInstr: do
+        language: apache
+    spec:
+      containers:
+      - name: my-apache
+        image: chrlic/apache-test
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+        resources:
+          limits:
+            cpu: "1"
+            memory: 500Mi
+          requests:
+            cpu: 250m
+            memory: 100Mi
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: r
+  name: my-apache
+  labels:
+    run: my-apache
+spec:
+  ports:
+  - port: 8082
+    targetPort: 8080
+    protocol: TCP
+  selector:
+    app: my-apache
+  type: LoadBalancer
