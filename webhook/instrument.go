@@ -39,6 +39,56 @@ func instrument(pod corev1.Pod, instrRule *InstrumentationRule) ([]patchOperatio
 		})
 	}
 
+	if len(pod.Spec.Containers) > 0 {
+		// fmt.Printf("Container Env: %d -> %v\n", len(pod.Spec.Containers[0].Env), pod.Spec.Containers[0].Env)
+		if len(pod.Spec.Containers[0].Env) == 0 {
+			patchOps = append(patchOps, patchOperation{
+				Op:    "add",
+				Path:  "/spec/containers/0/env",
+				Value: []corev1.EnvVar{},
+			})
+		}
+		if len(pod.Spec.Containers[0].VolumeMounts) == 0 {
+			patchOps = append(patchOps, patchOperation{
+				Op:    "add",
+				Path:  "/spec/containers/0/volumeMounts",
+				Value: []corev1.VolumeMount{},
+			})
+		}
+		if len(pod.Spec.Volumes) == 0 {
+			patchOps = append(patchOps, patchOperation{
+				Op:    "add",
+				Path:  "/spec/volumes/",
+				Value: []corev1.Volume{},
+			})
+		}
+		if len(pod.Spec.InitContainers) == 0 {
+			patchOps = append(patchOps, patchOperation{
+				Op:    "add",
+				Path:  "/spec/initContainers",
+				Value: []corev1.VolumeMount{},
+			})
+		}
+	}
+
+	if len(instrRule.InjectionRuleSet) > 0 {
+		// If injection rule set defined, loop over rules
+		// append all together
+		for _, injectionRule := range instrRule.InjectionRuleSet {
+			instrRule.InjectionRules = &injectionRule
+			patchOps = append(patchOps, applyInjectionRule(pod, instrRule)...)
+		}
+	} else {
+		// It's a simple injection rule, one provider, one technology
+		patchOps = append(patchOps, applyInjectionRule(pod, instrRule)...)
+	}
+
+	return patchOps, nil
+}
+
+func applyInjectionRule(pod corev1.Pod, instrRule *InstrumentationRule) []patchOperation {
+	patchOps := []patchOperation{}
+
 	_, provider := getTechnologyAndProvider(instrRule.InjectionRules.Technology)
 
 	switch provider {
@@ -50,7 +100,7 @@ func instrument(pod corev1.Pod, instrRule *InstrumentationRule) ([]patchOperatio
 		patchOps = append(patchOps, otelInstrumentation(pod, instrRule)...)
 	}
 
-	return patchOps, nil
+	return patchOps
 }
 
 func appdInstrumentation(pod corev1.Pod, instrRule *InstrumentationRule) []patchOperation {

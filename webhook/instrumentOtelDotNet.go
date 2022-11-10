@@ -27,38 +27,6 @@ import (
 func dotnetOtelInstrumentation(pod corev1.Pod, instrRule *InstrumentationRule) []patchOperation {
 	patchOps := []patchOperation{}
 
-	if len(pod.Spec.Containers) > 0 {
-		// fmt.Printf("Container Env: %d -> %v\n", len(pod.Spec.Containers[0].Env), pod.Spec.Containers[0].Env)
-		if len(pod.Spec.Containers[0].Env) == 0 {
-			patchOps = append(patchOps, patchOperation{
-				Op:    "add",
-				Path:  "/spec/containers/0/env",
-				Value: []corev1.EnvVar{},
-			})
-		}
-		if len(pod.Spec.Containers[0].VolumeMounts) == 0 {
-			patchOps = append(patchOps, patchOperation{
-				Op:    "add",
-				Path:  "/spec/containers/0/volumeMounts",
-				Value: []corev1.VolumeMount{},
-			})
-		}
-		if len(pod.Spec.Volumes) == 0 {
-			patchOps = append(patchOps, patchOperation{
-				Op:    "add",
-				Path:  "/spec/volumes/",
-				Value: []corev1.Volume{},
-			})
-		}
-		if len(pod.Spec.InitContainers) == 0 {
-			patchOps = append(patchOps, patchOperation{
-				Op:    "add",
-				Path:  "/spec/initContainers",
-				Value: []corev1.VolumeMount{},
-			})
-		}
-	}
-
 	//	patchOps = append(patchOps, addControllerEnvVars(0)...)
 	patchOps = append(patchOps, addOtelDotnetEnvVar(pod, instrRule, 0)...)
 
