@@ -27,7 +27,7 @@ cd ../../../build
 tar -xvf opentelemetry-webserver-sdk-x64-linux.tgz -C agent
 cd agent/opentelemetry-webserver-sdk
 
-agentLogDir="/opt/opentelemetry-apache/agent/logs"
+agentLogDir="/opt/opentelemetry-webserver/agent/logs"
 escapeForSedReplacement agentLogDir "${agentLogDir}"
 cat conf/appdynamics_sdk_log4cxx.xml.template | sed "s/__agent_log_dir__/${agentLogDir}/g"  > conf/appdynamics_sdk_log4cxx.xml
 # ./install.sh
