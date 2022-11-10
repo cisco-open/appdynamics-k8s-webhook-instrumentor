@@ -25,16 +25,11 @@ image:
   pullPolicy: Always
 
 appdController:
-  host: 192.168.227.132
-  port: "8090"
-  isSecure: false
-  accountName: customer1
-  accessKey: "0df071e7-6517-4444-b5bf-ff51e1532533"
-#  host: ceer.saas.appdynamics.com
-#  port: "443"
-#  isSecure: true
-#  accountName: ceer
-#  accessKey: "3gnmajormowm"
+  host: <instance>.saas.appdynamics.com
+  port: "443"
+  isSecure: true
+  accountName: <instance>
+  accessKey: "xxxxxxxxxxx"
 
 instrumentationTemplates:
   - name: Java_Default
