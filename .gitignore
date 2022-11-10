@@ -24,3 +24,4 @@ buildEnv/instrumentationImages/otelSDK/webserverAgentImage/helpers/nginxConfPatc
 buildEnv/instrumentationImages/otelSDK/webserverAgentImage/Dockerfile-local-build
 testWorkloads/nginxIngress/
 buildEnv/.vscode
+buildEnv/helm/testValues
