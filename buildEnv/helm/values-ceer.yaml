@@ -207,6 +207,17 @@ instrumentationTemplates:
       applicationNameSource: label
       applicationNameLabel: appdApp
       tierNameSource: auto
+  - name: Java_Telescope
+    injectionRules:
+      # technology = java | dotnetcore | nodejs
+      # provider = appd | otel | telescope - appd is default if missing
+      technology: java/telescope
+      image: chrlic/telescope-java-agent:latest
+      imagePullPolicy: Always
+      javaEnvVar: JAVA_TOOL_OPTIONS
+      applicationNameSource: label
+      applicationNameLabel: appdApp
+      tierNameSource: auto
 
 instrumentationRules:
   - name: test1
