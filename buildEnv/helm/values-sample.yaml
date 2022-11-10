@@ -14,6 +14,7 @@ webhookName: webhook-appd
 # - ns3
 # number of replicas for webhook server
 replicas: 1
+certValidityDays: 1024
 
 # service type and port for webhook server
 service:
@@ -40,6 +41,20 @@ instrumentationTemplates:
       technology: java
       image: appdynamics/java-agent:latest
       javaEnvVar: JAVA_TOOL_OPTIONS
+      applicationNameSource: label
+      applicationNameLabel: appdApp
+      tierNameSource: auto
+  - name: Dotnet_Default
+    injectionRules:
+      technology: dotnetcore
+      image: appdynamics/dotnet-core-agent:22.5.1
+      applicationNameSource: label
+      applicationNameLabel: appdApp
+      tierNameSource: auto
+  - name: Nodejs_Default
+    injectionRules:
+      technology: nodejs
+      image: appdynamics/nodejs-agent:22.5.0-16-stretch-slim
       applicationNameSource: label
       applicationNameLabel: appdApp
       tierNameSource: auto
@@ -70,3 +85,22 @@ instrumentationRules:
       technology: java
       image: appdynamics/java-agent:latest
       javaEnvVar: _JAVA_OPTIONS
+  - name: dotnet1
+    matchRules:
+      namespaceRegex: .*
+      labels:
+      - appdInstr: do
+      - language: dotnetcore
+      podNameRegex: .*
+    injectionRules:
+      template: Dotnet_Default
+  - name: nodejs1
+    matchRules:
+      namespaceRegex: .*
+      labels:
+      - appdInstr: do
+      - language: nodejs
+      podNameRegex: .*
+    injectionRules:
+      template: Nodejs_Default
+
