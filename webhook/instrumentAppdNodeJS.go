@@ -66,6 +66,8 @@ func nodejsAppdInstrumentation(pod corev1.Pod, instrRule *InstrumentationRule) [
 	// not sure it has to be there, but ClusterAgent does the following, too
 	patchOps = append(patchOps, addContainerEnvVar("APPDYNAMICS_AGENT_NODE_NAME", getTierName(pod, instrRule), 0))
 
+	patchOps = append(patchOps, addSpecifiedContainerEnvVars(instrRule.InjectionRules.EnvVars, 0)...)
+
 	patchOps = append(patchOps, addNetvizEnvVars(pod, instrRule, 0)...)
 
 	patchOps = append(patchOps, addNodejsAgentVolumeMount(pod, instrRule, 0)...)
