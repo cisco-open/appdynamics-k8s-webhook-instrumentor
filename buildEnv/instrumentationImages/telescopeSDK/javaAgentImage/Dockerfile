@@ -1,8 +1,8 @@
 FROM alpine:latest
 
-RUN mkdir /opt/opentelemetry
-WORKDIR /opt/opentelemetry
+RUN mkdir /opt/telescope
+WORKDIR /opt/telescope
 
-RUN wget https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/latest/download/opentelemetry-javaagent.jar
+RUN wget https://github.com/cisco-open/otel-java/releases/latest/download/cisco-telescope-javaagent.jar
 
 CMD ["cat", "Just delivering the Opentelemetry Java agent"]
