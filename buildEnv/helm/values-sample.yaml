@@ -59,7 +59,7 @@ appdController:
   # proxyHost: proxy.corm.com
   # proxyPort: "8080"
   otelEndpoint: https://pdx-sls-agent-api.saas.appdynamics.com
-  otelHeaderKey: "wAMj5PEVLZ1q4ZXgKaT7c5pqo1l6ye1a4fvB39UJ"
+  otelHeaderKey: "xxx"
 
 appdCloud:
 
