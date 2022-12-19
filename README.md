@@ -4,7 +4,7 @@ This project provides K8S mutating webhook, which, by pre-set rules, auto-instru
 
 ## Why?
 
-### Why different autinstrumentation for AppDynamics?
+### Why different autoinstrumentation for AppDynamics?
 
 AppDynamics offers autoinstrumentation functionality via Cluster Agent and it's configuration. Cluster Agent uses a strategy of 
 modifying Deployments, DeploymentConfigs (on OpenShift), and StatefulSets when those match pre-set criteria, when pod specifications are modified so, that agent for supported languages is automatically injected into application container. 
