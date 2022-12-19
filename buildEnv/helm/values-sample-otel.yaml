@@ -59,17 +59,13 @@ appdController:
   # proxyHost: proxy.corm.com
   # proxyPort: "8080"
   otelEndpoint: https://fra-sls-agent-api.saas.appdynamics.com
-  otelHeaderKey: "<OTel Header Key"
+  otelHeaderKey: "<OTel Header Key>"
 
 # appdCloud:
 #   clientID:
 #   clientSecret:
 #   appdTokenUrl:
 #   appdVanityUrl:
-
-telescope:
-  traces_endpoint: https://production.cisco-udp.com/trace-collector
-  token: <telescope-token>
 
 # optional OpenTelemetry parameters
 # covers OTel Collector settings for AppDynamics cSaaS, AppDynamics Cloud, and Cisco Telescope
@@ -112,11 +108,6 @@ openTelemetryCollectors:
             insecure: true
           endpoint: "{{ .Values.appdController.otelEndpoint }}"
           headers: {"x-api-key": "{{ .Values.appdController.otelHeaderKey }}"}
-        otlphttp/telescope:
-          traces_endpoint: {{ .Values.telescope.traces_endpoint }}
-          headers:
-            authorization: "Bearer {{ .Values.telescope.token }}"
-          compression: gzip
       service:
         pipelines:
           traces:
