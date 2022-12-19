@@ -27,3 +27,4 @@ testWorkloads/nginxIngress/
 buildEnv/.vscode
 buildEnv/helm/testValues
 
+buildEnv/helm/testValues1
