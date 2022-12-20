@@ -94,7 +94,7 @@ func getInstrumentationRule(pod corev1.Pod) *InstrumentationRule {
 	config.mutex.Lock()
 	defer config.mutex.Unlock()
 
-	fmt.Printf("Config: %v\n", config)
+	// fmt.Printf("Config: %v\n", config)
 
 	if config.FlexMatchTemplate != nil {
 		getFlexMatch(pod, config.FlexMatchTemplate)

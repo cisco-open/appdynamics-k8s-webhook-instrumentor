@@ -9,6 +9,7 @@ rules:
       - namespaces
       - configmaps
       - secrets
+      - pods
     verbs:
       - get
       - watch
