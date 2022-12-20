@@ -106,8 +106,12 @@ func main() {
 
 	if otelConfig.Trace {
 		log.Printf("Using otel tracing: %s\n", otelConfig)
-		shutdown := initOtelTracing()
-		defer shutdown()
+		shutdown, err := initOtelTracing()
+		if err != nil {
+			log.Printf("Error initializing OTEL tracing: %v\n", err)
+		} else {
+			defer shutdown()
+		}
 	}
 
 	go runConfigWatcher()
