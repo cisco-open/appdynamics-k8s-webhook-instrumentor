@@ -48,7 +48,7 @@ var otelConfig OtelConfig
 
 // Initializes an OTLP exporter, and configures the corresponding trace and
 // metric providers.
-func initOtelTracing() func() {
+func initOtelTracing() (func(), error) {
 	ctx := context.Background()
 
 	res, err := resource.New(ctx,
@@ -59,14 +59,23 @@ func initOtelTracing() func() {
 			semconv.TelemetrySDKLanguageGo,
 		),
 	)
-	handleErr(err, "failed to create resource")
+	if err != nil {
+		handleErr(err, "failed to create resource")
+		return nil, err
+	}
 
 	conn, err := grpc.DialContext(ctx, otelConfig.Endpoint, grpc.WithTransportCredentials(insecure.NewCredentials()) /*, grpc.WithBlock()*/)
-	handleErr(err, "failed to create gRPC connection to collector")
+	if err != nil {
+		handleErr(err, "failed to create gRPC connection to collector")
+		return nil, err
+	}
 
 	// Set up a trace exporter
 	traceExporter, err := otlptracegrpc.New(ctx, otlptracegrpc.WithGRPCConn(conn))
-	handleErr(err, "failed to create trace exporter")
+	if err != nil {
+		handleErr(err, "failed to create trace exporter")
+		return nil, err
+	}
 
 	// Register the trace exporter with a TracerProvider, using a batch
 	// span processor to aggregate spans before export.
@@ -85,7 +94,7 @@ func initOtelTracing() func() {
 	return func() {
 		// Shutdown will flush any remaining spans and shut down the exporter.
 		handleErr(tracerProvider.Shutdown(ctx), "failed to shutdown TracerProvider")
-	}
+	}, nil
 }
 
 func handleErr(err error, message string) {
