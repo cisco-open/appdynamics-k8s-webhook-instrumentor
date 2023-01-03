@@ -55,7 +55,11 @@ to upgrade after values change:
 
 If using helm, modify values.yaml for helm chart parameters
 
-See `values-sample.yaml` for inspiration - doc will be provided later.
+See `values-sample.yaml` for inspiration and this [Blog Post](<https://chrlic.github.io/appd-mwh-blog/>) to get started.
+
+More examples and documentation is coming soon. 
+
+
 
 
 
