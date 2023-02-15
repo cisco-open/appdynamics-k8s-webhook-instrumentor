@@ -142,11 +142,12 @@ func addOtelNginxAgentInitContainer(pod corev1.Pod, instrRules *InstrumentationR
 			Command: []string{"/bin/sh", "-c"},
 			Args: []string{
 				"cp -ar /opt/opentelemetry/* " + OTEL_WEBSERVER_AGENT_DIR + " && " +
+					"export NGINX_VERSION=`cat " + OTEL_WEBSERVER_CONFIG_DIR + "/version.txt` && " +
 					"export agentLogDir=$(echo \"" + OTEL_WEBSERVER_AGENT_DIR + "/logs\" | sed 's,/,\\\\/,g') && " +
 					"cat " + OTEL_WEBSERVER_AGENT_DIR + "/conf/appdynamics_sdk_log4cxx.xml.template | sed 's/__agent_log_dir__/'${agentLogDir}'/g'  > " + OTEL_WEBSERVER_AGENT_DIR + "/conf/appdynamics_sdk_log4cxx.xml &&" +
 					"echo \"$OPENTELEMETRY_MODULE_CONF\" > " + OTEL_WEBSERVER_CONFIG_DIR + "/opentelemetry_agent.conf && " +
-					"sed -i '1s,^,load_module " + OTEL_WEBSERVER_AGENT_DIR + "/WebServerModule/Nginx/ngx_http_opentelemetry_module.so;\\n,g' " + OTEL_WEBSERVER_CONFIG_DIR + "/nginx.conf && " +
-					"cp " + OTEL_WEBSERVER_CONFIG_DIR + "/opentelemetry_agent.conf " + OTEL_WEBSERVER_CONFIG_DIR + "/conf.d",
+					"sed -i \"1s,^,load_module " + OTEL_WEBSERVER_AGENT_DIR + "/WebServerModule/Nginx/${NGINX_VERSION}/ngx_http_opentelemetry_module.so;\\n,g\" " + OTEL_WEBSERVER_CONFIG_DIR + "/nginx.conf && " +
+					"mv " + OTEL_WEBSERVER_CONFIG_DIR + "/opentelemetry_agent.conf " + OTEL_WEBSERVER_CONFIG_DIR + "/conf.d",
 
 				// "cp " + OTEL_WEBSERVER_CONFIG_DIR + "/nginx.conf " + OTEL_WEBSERVER_CONFIG_DIR + "/nginx.conf.old && " +
 				// Patch nginx.conf - include agent libs + conf
@@ -247,7 +248,9 @@ func addNginxApplicationContainerCloneAsInit(pod corev1.Pod, instrRules *Instrum
 		},
 	)
 	initContainerSpec.Command = []string{"/bin/sh", "-c"}
-	initContainerSpec.Args = []string{"cp -r /etc/nginx/* " + OTEL_WEBSERVER_CONFIG_DIR}
+	initContainerSpec.Args = []string{"cp -r /etc/nginx/* " + OTEL_WEBSERVER_CONFIG_DIR + " && " +
+		"export NGINX_VERSION=$( { nginx -v ; } 2>&1 ) && " +
+		"echo ${NGINX_VERSION##*/} > " + OTEL_WEBSERVER_CONFIG_DIR + "/version.txt"}
 
 	patchOps = append(patchOps, patchOperation{
 		Op:    "add",
