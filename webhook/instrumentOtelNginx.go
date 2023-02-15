@@ -69,6 +69,60 @@ func addOtelNginxEnvVar(pod corev1.Pod, instrRules *InstrumentationRule, contain
 		},
 	})
 
+	patchOps = append(patchOps, patchOperation{
+		Op:   "add",
+		Path: fmt.Sprintf("/spec/containers/%d/env/-", containerIdx),
+		Value: corev1.EnvVar{
+			Name: "K8S_POD_IP",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "status.podIP",
+				},
+			},
+		},
+	})
+
+	patchOps = append(patchOps, patchOperation{
+		Op:   "add",
+		Path: fmt.Sprintf("/spec/containers/%d/env/-", containerIdx),
+		Value: corev1.EnvVar{
+			Name: "K8S_POD_NAME",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "metadata.name",
+				},
+			},
+		},
+	})
+
+	patchOps = append(patchOps, patchOperation{
+		Op:   "add",
+		Path: fmt.Sprintf("/spec/containers/%d/env/-", containerIdx),
+		Value: corev1.EnvVar{
+			Name: "K8S_NAMESPACE_NAME",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "metadata.namespace",
+				},
+			},
+		},
+	})
+
+	containerName := pod.Spec.Containers[containerIdx].Name
+	otelResourceAttributes := "k8s.pod.ip=$(K8S_POD_IP),k8s.pod.name=$(K8S_POD_NAME),k8s.namespace.name=$(K8S_NAMESPACE_NAME)"
+	otelResourceAttributes = otelResourceAttributes + ",k8s.container.name=" + containerName
+	// TODO - think about getting right number of restarts
+	otelResourceAttributes = otelResourceAttributes + ",k8s.container.restart_count=0"
+
+	patchOps = append(patchOps, patchOperation{
+		Op:   "add",
+		Path: fmt.Sprintf("/spec/containers/%d/env/-", containerIdx),
+		Value: corev1.EnvVar{
+			Name:  "OTEL_RESOURCE_ATTRIBUTES",
+			Value: otelResourceAttributes,
+		},
+	})
+
 	return patchOps
 }
 
@@ -147,13 +201,8 @@ func addOtelNginxAgentInitContainer(pod corev1.Pod, instrRules *InstrumentationR
 					"cat " + OTEL_WEBSERVER_AGENT_DIR + "/conf/appdynamics_sdk_log4cxx.xml.template | sed 's/__agent_log_dir__/'${agentLogDir}'/g'  > " + OTEL_WEBSERVER_AGENT_DIR + "/conf/appdynamics_sdk_log4cxx.xml &&" +
 					"echo \"$OPENTELEMETRY_MODULE_CONF\" > " + OTEL_WEBSERVER_CONFIG_DIR + "/opentelemetry_agent.conf && " +
 					"sed -i \"1s,^,load_module " + OTEL_WEBSERVER_AGENT_DIR + "/WebServerModule/Nginx/${NGINX_VERSION}/ngx_http_opentelemetry_module.so;\\n,g\" " + OTEL_WEBSERVER_CONFIG_DIR + "/nginx.conf && " +
+					"sed -i \"1s,^,env OTEL_RESOURCE_ATTRIBUTES;\\n,g\" " + OTEL_WEBSERVER_CONFIG_DIR + "/nginx.conf && " +
 					"mv " + OTEL_WEBSERVER_CONFIG_DIR + "/opentelemetry_agent.conf " + OTEL_WEBSERVER_CONFIG_DIR + "/conf.d",
-
-				// "cp " + OTEL_WEBSERVER_CONFIG_DIR + "/nginx.conf " + OTEL_WEBSERVER_CONFIG_DIR + "/nginx.conf.old && " +
-				// Patch nginx.conf - include agent libs + conf
-				// OTEL_WEBSERVER_AGENT_DIR + "/nginxConfPatcher " + OTEL_WEBSERVER_CONFIG_DIR + "/nginx.conf.old " +
-				// OTEL_WEBSERVER_AGENT_DIR + "/WebServerModule/Nginx/ngx_http_opentelemetry_module.so " +
-				// "/etc/nginx/opentelemetry_agent.conf > " + OTEL_WEBSERVER_CONFIG_DIR + "/nginx.conf",
 			},
 			ImagePullPolicy: corev1.PullAlways,
 			Env: []corev1.EnvVar{
@@ -197,8 +246,9 @@ NginxModuleServiceNamespace %[3]s;
 NginxModuleServiceInstanceId %[4]s;
 NginxModuleResolveBackends ON;
 NginxModuleTraceAsError ON;
+NginxModuleSegmentType FIRST;
+NginxModuleSegmentParameter 3;
 `
-
 	collectorEndpoint := ""
 	if instrRules.InjectionRules.OpenTelemetryCollector != "" {
 		otelCollConfig, found := otelCollsConfig[instrRules.InjectionRules.OpenTelemetryCollector]
