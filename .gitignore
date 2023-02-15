@@ -28,3 +28,8 @@ buildEnv/.vscode
 buildEnv/helm/testValues
 
 buildEnv/helm/testValues1
+
+apis/
+local/
+local-contid/
+v2/
