@@ -341,6 +341,85 @@ func addSpecifiedContainerEnvVars(vars []NameValue, containerIdx int) []patchOpe
 	return patchOps
 }
 
+func addK8SOtelResourceAttrs(pod corev1.Pod, instrRules *InstrumentationRule, containerIdx int) []patchOperation {
+	patchOps := []patchOperation{}
+
+	preSetOtelResAttrs := ""
+	podEnvs := pod.Spec.Containers[containerIdx].Env
+	if podEnvs != nil {
+		for _, env := range podEnvs {
+			if env.Name == "OTEL_RESOURCE_ATTRIBUTES" {
+				preSetOtelResAttrs = env.Value
+				break
+			}
+		}
+	}
+
+	if *instrRules.InjectionRules.InjectK8SOtelResourceAttrs {
+		patchOps = append(patchOps, patchOperation{
+			Op:   "add",
+			Path: fmt.Sprintf("/spec/containers/%d/env/-", containerIdx),
+			Value: corev1.EnvVar{
+				Name: "K8S_POD_IP",
+				ValueFrom: &corev1.EnvVarSource{
+					FieldRef: &corev1.ObjectFieldSelector{
+						FieldPath: "status.podIP",
+					},
+				},
+			},
+		})
+
+		patchOps = append(patchOps, patchOperation{
+			Op:   "add",
+			Path: fmt.Sprintf("/spec/containers/%d/env/-", containerIdx),
+			Value: corev1.EnvVar{
+				Name: "K8S_POD_NAME",
+				ValueFrom: &corev1.EnvVarSource{
+					FieldRef: &corev1.ObjectFieldSelector{
+						FieldPath: "metadata.name",
+					},
+				},
+			},
+		})
+
+		patchOps = append(patchOps, patchOperation{
+			Op:   "add",
+			Path: fmt.Sprintf("/spec/containers/%d/env/-", containerIdx),
+			Value: corev1.EnvVar{
+				Name: "K8S_NAMESPACE_NAME",
+				ValueFrom: &corev1.EnvVarSource{
+					FieldRef: &corev1.ObjectFieldSelector{
+						FieldPath: "metadata.namespace",
+					},
+				},
+			},
+		})
+
+		containerName := pod.Spec.Containers[containerIdx].Name
+		otelResourceAttributes := "k8s.pod.ip=$(K8S_POD_IP),k8s.pod.name=$(K8S_POD_NAME),k8s.namespace.name=$(K8S_NAMESPACE_NAME)"
+		otelResourceAttributes = otelResourceAttributes + ",k8s.container.name=" + containerName
+		// TODO - think about getting right number of restarts
+		otelResourceAttributes = otelResourceAttributes + ",k8s.container.restart_count=0"
+
+		if preSetOtelResAttrs != "" {
+			otelResourceAttributes = preSetOtelResAttrs + "," + otelResourceAttributes
+		}
+
+		patchOps = append(patchOps, patchOperation{
+			Op:   "add",
+			Path: fmt.Sprintf("/spec/containers/%d/env/-", containerIdx),
+			Value: corev1.EnvVar{
+				Name:  "OTEL_RESOURCE_ATTRIBUTES",
+				Value: otelResourceAttributes,
+			},
+		})
+	}
+
+	log.Printf("OrelRsrs: %b, %v\n", *instrRules.InjectionRules.InjectK8SOtelResourceAttrs, patchOps)
+
+	return patchOps
+}
+
 func addNetvizEnvVars(pod corev1.Pod, instrRules *InstrumentationRule, containerIdx int) []patchOperation {
 	patchOps := []patchOperation{}
 
