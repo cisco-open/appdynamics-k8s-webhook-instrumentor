@@ -69,59 +69,7 @@ func addOtelNginxEnvVar(pod corev1.Pod, instrRules *InstrumentationRule, contain
 		},
 	})
 
-	patchOps = append(patchOps, patchOperation{
-		Op:   "add",
-		Path: fmt.Sprintf("/spec/containers/%d/env/-", containerIdx),
-		Value: corev1.EnvVar{
-			Name: "K8S_POD_IP",
-			ValueFrom: &corev1.EnvVarSource{
-				FieldRef: &corev1.ObjectFieldSelector{
-					FieldPath: "status.podIP",
-				},
-			},
-		},
-	})
-
-	patchOps = append(patchOps, patchOperation{
-		Op:   "add",
-		Path: fmt.Sprintf("/spec/containers/%d/env/-", containerIdx),
-		Value: corev1.EnvVar{
-			Name: "K8S_POD_NAME",
-			ValueFrom: &corev1.EnvVarSource{
-				FieldRef: &corev1.ObjectFieldSelector{
-					FieldPath: "metadata.name",
-				},
-			},
-		},
-	})
-
-	patchOps = append(patchOps, patchOperation{
-		Op:   "add",
-		Path: fmt.Sprintf("/spec/containers/%d/env/-", containerIdx),
-		Value: corev1.EnvVar{
-			Name: "K8S_NAMESPACE_NAME",
-			ValueFrom: &corev1.EnvVarSource{
-				FieldRef: &corev1.ObjectFieldSelector{
-					FieldPath: "metadata.namespace",
-				},
-			},
-		},
-	})
-
-	containerName := pod.Spec.Containers[containerIdx].Name
-	otelResourceAttributes := "k8s.pod.ip=$(K8S_POD_IP),k8s.pod.name=$(K8S_POD_NAME),k8s.namespace.name=$(K8S_NAMESPACE_NAME)"
-	otelResourceAttributes = otelResourceAttributes + ",k8s.container.name=" + containerName
-	// TODO - think about getting right number of restarts
-	otelResourceAttributes = otelResourceAttributes + ",k8s.container.restart_count=0"
-
-	patchOps = append(patchOps, patchOperation{
-		Op:   "add",
-		Path: fmt.Sprintf("/spec/containers/%d/env/-", containerIdx),
-		Value: corev1.EnvVar{
-			Name:  "OTEL_RESOURCE_ATTRIBUTES",
-			Value: otelResourceAttributes,
-		},
-	})
+	patchOps = append(patchOps, addK8SOtelResourceAttrs(pod, instrRules, containerIdx)...)
 
 	return patchOps
 }
@@ -246,9 +194,11 @@ NginxModuleServiceNamespace %[3]s;
 NginxModuleServiceInstanceId %[4]s;
 NginxModuleResolveBackends ON;
 NginxModuleTraceAsError ON;
-NginxModuleSegmentType FIRST;
-NginxModuleSegmentParameter 3;
 `
+
+	for _, option := range instrRules.InjectionRules.Options {
+		template += "\n" + option.Name + " " + option.Value + ";"
+	}
 	collectorEndpoint := ""
 	if instrRules.InjectionRules.OpenTelemetryCollector != "" {
 		otelCollConfig, found := otelCollsConfig[instrRules.InjectionRules.OpenTelemetryCollector]

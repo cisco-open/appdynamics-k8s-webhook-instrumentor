@@ -64,16 +64,7 @@ func apacheOtelInstrumentation(pod corev1.Pod, instrRule *InstrumentationRule) [
 func addOtelApacheEnvVar(pod corev1.Pod, instrRules *InstrumentationRule, containerIdx int) []patchOperation {
 	patchOps := []patchOperation{}
 
-	/*
-		patchOps = append(patchOps, patchOperation{
-			Op:   "add",
-			Path: fmt.Sprintf("/spec/containers/%d/env/-", containerIdx),
-			Value: corev1.EnvVar{
-				Name:  "LD_LIBRARY_PATH",
-				Value: OTEL_WEBSERVER_AGENT_DIR + "/sdk_lib/lib",
-			},
-		})
-	*/
+	patchOps = append(patchOps, addK8SOtelResourceAttrs(pod, instrRules, containerIdx)...)
 
 	return patchOps
 }
@@ -227,6 +218,10 @@ ApacheModuleTraceAsError ON
 #ApacheModuleSegmentType custom
 #ApacheModuleSegmentParameter 15,1,6,7          
 `
+
+	for _, option := range instrRules.InjectionRules.Options {
+		template = template + "\n" + option.Name + " " + option.Value
+	}
 
 	collectorEndpoint := ""
 	if instrRules.InjectionRules.OpenTelemetryCollector != "" {

@@ -98,29 +98,30 @@ type MatchRules struct {
 }
 
 type InjectionRules struct {
-	Template                  string               `json:"template,omitempty" yaml:"template,omitempty"`
-	Technology                string               `json:"technology,omitempty" yaml:"technology,omitempty"`
-	Image                     string               `json:"image,omitempty" yaml:"image,omitempty"`
-	JavaEnvVar                string               `json:"javaEnvVar,omitempty" yaml:"javaEnvVar,omitempty"`
-	JavaCustomConfig          string               `json:"javaCustomConfig,omitempty" yaml:"javaCustomConfig,omitempty"`
-	ApplicationNameSource     string               `json:"applicationNameSource,omitempty" yaml:"applicationNameSource,omitempty"` // manual,namespace,label,annotation,expression
-	ApplicationName           string               `json:"applicationName,omitempty" yaml:"applicationName,omitempty"`
-	ApplicationNameLabel      string               `json:"applicationNameLabel,omitempty" yaml:"applicationNameLabel,omitempty"`
-	ApplicationNameAnnotation string               `json:"applicationNameAnnotation,omitempty" yaml:"applicationNameAnnotation,omitempty"`
-	ApplicationNameExpression string               `json:"applicationNameExpression,omitempty" yaml:"applicationNameExpression,omitempty"`
-	TierNameSource            string               `json:"tierNameSource,omitempty" yaml:"tierNameSource,omitempty"` // auto,manual,namespace,label,annotation,expression
-	TierName                  string               `json:"tierName,omitempty" yaml:"tierName,omitempty"`
-	TierNameLabel             string               `json:"tierNameLabel,omitempty" yaml:"tierNameLabel,omitempty"`
-	TierNameAnnotation        string               `json:"tierNameAnnotation,omitempty" yaml:"tierNameAnnotation,omitempty"`
-	TierNameExpression        string               `json:"tierNameExpression,omitempty" yaml:"tierNameExpression,omitempty"`
-	UsePodNameForNodeName     *bool                `json:"usePodNameForNodeName,omitempty" yaml:"usePodNameForNodeName,omitempty"`
-	DoNotInstrument           *bool                `json:"doNotInstrument,omitempty" yaml:"doNotInstrument,omitempty"`
-	ResourceReservation       *ResourceReservation `json:"resourceReservation,omitempty" yaml:"resourceReservation,omitempty"`
-	LogLevel                  string               `json:"logLevel,omitempty" yaml:"logLevel,omitempty"`
-	NetvizPort                string               `json:"netvizPort,omitempty" yaml:"netvizPort,omitempty"`
-	OpenTelemetryCollector    string               `json:"openTelemetryCollector,omitempty" yaml:"openTelemetryCollector,omitempty"`
-	EnvVars                   []NameValue          `json:"env,omitempty" yaml:"env,omitempty"`
-	Options                   []NameValue          `json:"options,omitempty" yaml:"options,omitempty"`
+	Template                   string               `json:"template,omitempty" yaml:"template,omitempty"`
+	Technology                 string               `json:"technology,omitempty" yaml:"technology,omitempty"`
+	Image                      string               `json:"image,omitempty" yaml:"image,omitempty"`
+	JavaEnvVar                 string               `json:"javaEnvVar,omitempty" yaml:"javaEnvVar,omitempty"`
+	JavaCustomConfig           string               `json:"javaCustomConfig,omitempty" yaml:"javaCustomConfig,omitempty"`
+	ApplicationNameSource      string               `json:"applicationNameSource,omitempty" yaml:"applicationNameSource,omitempty"` // manual,namespace,label,annotation,expression
+	ApplicationName            string               `json:"applicationName,omitempty" yaml:"applicationName,omitempty"`
+	ApplicationNameLabel       string               `json:"applicationNameLabel,omitempty" yaml:"applicationNameLabel,omitempty"`
+	ApplicationNameAnnotation  string               `json:"applicationNameAnnotation,omitempty" yaml:"applicationNameAnnotation,omitempty"`
+	ApplicationNameExpression  string               `json:"applicationNameExpression,omitempty" yaml:"applicationNameExpression,omitempty"`
+	TierNameSource             string               `json:"tierNameSource,omitempty" yaml:"tierNameSource,omitempty"` // auto,manual,namespace,label,annotation,expression
+	TierName                   string               `json:"tierName,omitempty" yaml:"tierName,omitempty"`
+	TierNameLabel              string               `json:"tierNameLabel,omitempty" yaml:"tierNameLabel,omitempty"`
+	TierNameAnnotation         string               `json:"tierNameAnnotation,omitempty" yaml:"tierNameAnnotation,omitempty"`
+	TierNameExpression         string               `json:"tierNameExpression,omitempty" yaml:"tierNameExpression,omitempty"`
+	UsePodNameForNodeName      *bool                `json:"usePodNameForNodeName,omitempty" yaml:"usePodNameForNodeName,omitempty"`
+	DoNotInstrument            *bool                `json:"doNotInstrument,omitempty" yaml:"doNotInstrument,omitempty"`
+	ResourceReservation        *ResourceReservation `json:"resourceReservation,omitempty" yaml:"resourceReservation,omitempty"`
+	LogLevel                   string               `json:"logLevel,omitempty" yaml:"logLevel,omitempty"`
+	NetvizPort                 string               `json:"netvizPort,omitempty" yaml:"netvizPort,omitempty"`
+	OpenTelemetryCollector     string               `json:"openTelemetryCollector,omitempty" yaml:"openTelemetryCollector,omitempty"`
+	EnvVars                    []NameValue          `json:"env,omitempty" yaml:"env,omitempty"`
+	Options                    []NameValue          `json:"options,omitempty" yaml:"options,omitempty"`
+	InjectK8SOtelResourceAttrs *bool                `json:"injectK8SOtelResourceAttrs,omitempty" yaml:"injectK8SOtelResourceAttrs,omitempty"`
 }
 
 type NameValue struct {
@@ -400,6 +401,10 @@ func injectionRuleDefaults(injRules *InjectionRules) *InjectionRules {
 		falseValue := false
 		injRules.UsePodNameForNodeName = &falseValue
 	}
+	if injRules.InjectK8SOtelResourceAttrs == nil {
+		trueValue := true
+		injRules.InjectK8SOtelResourceAttrs = &trueValue
+	}
 	injRules.ApplicationNameSource = applyTemplateString(injRules.ApplicationNameSource, "namespace")
 	injRules.JavaEnvVar = applyTemplateString(injRules.JavaEnvVar, "JAVA_TOOL_OPTIONS")
 	injRules.TierNameSource = applyTemplateString(injRules.TierNameSource, "auto")
@@ -462,7 +467,7 @@ func injectionRuleTemplate(injRules *InjectionRules, injTempRules *InjectionRule
 	injRules.ApplicationNameExpression = applyTemplateString(injRules.ApplicationNameExpression, injTempRules.ApplicationNameExpression)
 	injRules.ApplicationNameLabel = applyTemplateString(injRules.ApplicationNameLabel, injTempRules.ApplicationNameLabel)
 	injRules.ApplicationNameSource = applyTemplateString(injRules.ApplicationNameSource, injTempRules.ApplicationNameSource)
-	injRules.DoNotInstrument = applyTemplateBool(injRules.DoNotInstrument, injTempRules.DoNotInstrument)
+	injRules.DoNotInstrument = applyTemplateBool(injRules.DoNotInstrument, injTempRules.DoNotInstrument, false)
 	injRules.Image = applyTemplateString(injRules.Image, injTempRules.Image)
 	injRules.JavaCustomConfig = applyTemplateString(injRules.JavaCustomConfig, injTempRules.JavaCustomConfig)
 	injRules.JavaEnvVar = applyTemplateString(injRules.JavaEnvVar, injTempRules.JavaEnvVar)
@@ -473,7 +478,7 @@ func injectionRuleTemplate(injRules *InjectionRules, injTempRules *InjectionRule
 	injRules.TierNameExpression = applyTemplateString(injRules.TierNameExpression, injTempRules.TierNameExpression)
 	injRules.TierNameLabel = applyTemplateString(injRules.TierNameLabel, injTempRules.TierNameLabel)
 	injRules.TierNameSource = applyTemplateString(injRules.TierNameSource, injTempRules.TierNameSource)
-	injRules.UsePodNameForNodeName = applyTemplateBool(injRules.UsePodNameForNodeName, injTempRules.UsePodNameForNodeName)
+	injRules.UsePodNameForNodeName = applyTemplateBool(injRules.UsePodNameForNodeName, injTempRules.UsePodNameForNodeName, false)
 	if injRules.ResourceReservation == nil && injTempRules.ResourceReservation != nil {
 		injRules.ResourceReservation = &ResourceReservation{}
 		injRules.ResourceReservation.CPU = applyTemplateString(injRules.ResourceReservation.CPU, injTempRules.ResourceReservation.CPU)
@@ -483,6 +488,7 @@ func injectionRuleTemplate(injRules *InjectionRules, injTempRules *InjectionRule
 	injRules.OpenTelemetryCollector = applyTemplateString(injRules.OpenTelemetryCollector, injTempRules.OpenTelemetryCollector)
 	injRules.EnvVars = mergeNameValues(injRules.EnvVars, injTempRules.EnvVars)
 	injRules.Options = mergeNameValues(injRules.Options, injTempRules.Options)
+	injRules.InjectK8SOtelResourceAttrs = applyTemplateBool(injRules.InjectK8SOtelResourceAttrs, injTempRules.InjectK8SOtelResourceAttrs, true)
 	///
 	return injRules
 }
@@ -651,11 +657,11 @@ func applyTemplateString(specific string, template string) string {
 	}
 }
 
-func applyTemplateBool(specific *bool, template *bool) *bool {
+func applyTemplateBool(specific *bool, template *bool, def bool) *bool {
 	if specific == nil {
 		if template == nil {
-			falseValue := false
-			return &falseValue
+			boolValue := def
+			return &boolValue
 		} else {
 			return template
 		}
