@@ -488,7 +488,7 @@ func injectionRuleTemplate(injRules *InjectionRules, injTempRules *InjectionRule
 	injRules.OpenTelemetryCollector = applyTemplateString(injRules.OpenTelemetryCollector, injTempRules.OpenTelemetryCollector)
 	injRules.EnvVars = mergeNameValues(injRules.EnvVars, injTempRules.EnvVars)
 	injRules.Options = mergeNameValues(injRules.Options, injTempRules.Options)
-	injRules.InjectK8SOtelResourceAttrs = applyTemplateBool(injRules.InjectK8SOtelResourceAttrs, injTempRules.InjectK8SOtelResourceAttrs, true)
+	injRules.InjectK8SOtelResourceAttrs = applyTemplateBool(injRules.InjectK8SOtelResourceAttrs, injTempRules.InjectK8SOtelResourceAttrs, false)
 	///
 	return injRules
 }

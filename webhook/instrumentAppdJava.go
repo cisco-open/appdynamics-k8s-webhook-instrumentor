@@ -62,6 +62,8 @@ func javaAppdInstrumentation(pod corev1.Pod, instrRule *InstrumentationRule) []p
 func addJavaEnvVar(pod corev1.Pod, instrRules *InstrumentationRule, containerIdx int) []patchOperation {
 	patchOps := []patchOperation{}
 
+	patchOps = append(patchOps, addK8SOtelResourceAttrs(pod, instrRules, containerIdx)...)
+
 	patchOps = append(patchOps, patchOperation{
 		Op:   "add",
 		Path: fmt.Sprintf("/spec/containers/%d/env/-", containerIdx),
@@ -113,7 +115,11 @@ func getJavaOptions(pod corev1.Pod, instrRules *InstrumentationRule) string {
 			log.Printf("Cannot find OTel collector definition %s\n", instrRules.InjectionRules.OpenTelemetryCollector)
 		} else {
 			javaOpts += "-Dappdynamics.opentelemetry.enabled=true "
-			javaOpts += fmt.Sprintf("-Dotel.resource.attributes=service.name=%s,service.namespace=%s ", getTierName(pod, instrRules), getApplicationName(pod, instrRules))
+			otelRsrcAttrs := ""
+			if *instrRules.InjectionRules.InjectK8SOtelResourceAttrs {
+				otelRsrcAttrs = ",$(OTEL_RESOURCE_ATTRIBUTES)"
+			}
+			javaOpts += fmt.Sprintf("-Dotel.resource.attributes=service.name=%s,service.namespace=%s%s ", getTierName(pod, instrRules), getApplicationName(pod, instrRules), otelRsrcAttrs)
 			javaOpts += "-Dotel.traces.exporter=otlp,logging "
 			if otelCollConfig.Mode == "sidecar" {
 				javaOpts += "-Dotel.exporter.otlp.traces.endpoint=http://localhost:4317 "
