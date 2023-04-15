@@ -17,8 +17,8 @@ spec:
         app: testserver
         appdApp: MD-instr-wh
         appdInstr: do
-        # language: nodejs
-        language: uni
+        language: nodejs
+        # language: uni
     spec:
       containers:
       - name: testserver
