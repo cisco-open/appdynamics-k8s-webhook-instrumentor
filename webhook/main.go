@@ -59,6 +59,15 @@ func applyAppdInstrumentation(req *admission.AdmissionRequest) ([]patchOperation
 		return nil, fmt.Errorf("could not deserialize pod object: %v", err)
 	}
 
+	// Check if pod fields are empty but we can fill from other sources
+	if len(pod.Name) == 0 && len(pod.GenerateName) > 0 {
+		pod.Name = pod.GenerateName
+	}
+
+	if len(pod.Namespace) == 0 && len(req.Namespace) > 0 {
+		pod.Namespace = req.Namespace
+	}
+
 	// Check if we have configuration sucessfully
 	if config.ControllerConfig == nil || config.InstrumentationConfig == nil {
 		return nil, fmt.Errorf("instrumentor configuration not read from configmap")
