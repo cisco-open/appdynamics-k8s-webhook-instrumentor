@@ -33,3 +33,5 @@ apis/
 local/
 local-contid/
 v2/
+testWorkloads/nodejs/testserver/node_modules
+testWorkloads/customErrorPlugin/
