@@ -74,6 +74,20 @@ See `values-sample.yaml` for inspiration and this [Blog Post](<https://chrlic.gi
 
 More examples and documentation is coming soon. 
 
+## DB Agent support
+
+DB Agent can be provisioned with the instrumentor, too. Add following section to your values file, note there can be multiple DB agents provisioned:
+
+```
+dbAgents:
+  # db agent name MUST be DNS friendly - only lowercase, numbers and "-"
+  md-db-agent-k8s:
+    image:
+      image: docker.io/appdynamics/db-agent:latest
+      imagePullPolicy: Always
+```
+
+DB Agent will automatically register to the AppDynamics controller specified for instrumentation in the values file.
 
 
 
