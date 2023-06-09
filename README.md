@@ -42,9 +42,24 @@ This project supports both AppDynamics hybrid agents and OpenTelemetry agents in
 
 ## How to install?
 
-User helm:
+Using Helm:
+
+1) Add Helm chart repository 
+   
 ```
-helm install --namespace=<namespace> <chart-name> . --values=<values-file>
+helm repo add mwh https://cisco-open.github.io/appdynamics-k8s-webhook-instrumentor/
+```
+
+2) Update Helm repository cache
+   
+```
+helm repo update
+```
+
+3) Deploy chart with values
+
+```
+helm install --namespace=<namespace> <chart-name> mwh/webhook-instrumentor --values=<values-file>
 ```
 
 to upgrade after values change:
