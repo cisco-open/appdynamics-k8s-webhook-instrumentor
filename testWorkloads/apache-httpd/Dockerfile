@@ -15,5 +15,9 @@
 
 
 FROM httpd:2.4
+
 COPY ./conf/ /usr/local/apache2/conf
 COPY ./public/ /usr/local/apache2/htdocs/
+
+# Allow running the container with non-root user
+RUN chmod 777 -R /usr/local/apache2/
