@@ -1,0 +1,140 @@
+
+{{- $ca := genCA "webhook-change-group-webhook-ca" (.Values.certValidityDays | int) -}}
+{{- $altNames := list ( printf "%s.%s" (include "webhook-instrumentor.name" .) .Release.Namespace ) ( printf "%s.%s.svc" (include "webhook-instrumentor.name" .) .Release.Namespace ) -}}
+{{- $cert := genSignedCert ( include "webhook-instrumentor.name" . ) nil $altNames (.Values.certValidityDays | int) $ca -}}
+
+---
+{{- if not ( and ( .Values.useServiceCAonOCP ) ( .Capabilities.APIVersions.Has "apps.openshift.io/v1/DeploymentConfig") )}}
+apiVersion: v1
+kind: Secret
+type: kubernetes.io/tls
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: {{ template "webhook-instrumentor.name" . }}-certs
+  labels:
+    app: {{ template "webhook-instrumentor.name" . }}
+    chart: {{ template "webhook-instrumentor.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+  annotations:
+    # "helm.sh/hook": "pre-install"
+    # "helm.sh/hook-delete-policy": "before-hook-creation"
+data:
+  {{- if not (hasKey .Values "certs") }}
+  tls.crt: {{ $cert.Cert | b64enc | quote }}
+  tls.key: {{ $cert.Key | b64enc | quote }}
+  ca.crt: {{ $ca.Cert | b64enc | quote }}
+  {{- else }}
+  tls.crt: {{ .Values.certs.tlsCert | quote }}
+  tls.key: {{ .Values.certs.tlsKey | quote }}
+  ca.crt: {{ .Values.certs.caCert | quote }}
+  {{- end }}
+{{- end }}
+
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  {{- if and ( .Values.useServiceCAonOCP ) ( .Capabilities.APIVersions.Has "apps.openshift.io/v1/DeploymentConfig") }}
+  annotations:
+    service.beta.openshift.io/inject-cabundle: 'true'
+  {{- end }}
+  name: {{ .Values.webhookName }}
+webhooks:
+  - name: {{ ( printf "%s.%s.svc" (include "webhook-instrumentor.name" .) .Release.Namespace ) }}
+    sideEffects: None
+    admissionReviewVersions: ["v1", "v1beta1"]
+    timeoutSeconds: {{ .Values.timeoutSeconds | int }}
+    failurePolicy: {{ .Values.failurePolicy }}
+    clientConfig:
+      service:
+        name: {{ ( include "webhook-instrumentor.name" . ) }}
+        namespace: {{ .Release.Namespace }}
+        path: "/mutate"
+        port: 7443
+      {{ if not ( and ( .Values.useServiceCAonOCP ) ( .Capabilities.APIVersions.Has "apps.openshift.io/v1/DeploymentConfig") )}}
+      {{ if not (hasKey .Values "certs") }}
+      caBundle: {{ $ca.Cert | b64enc | quote }}
+      {{ else }}
+      caBundle: {{ .Values.certs.caCert | quote }}
+      {{ end }}
+      {{ end }}
+    {{- if .Values.enabledForPodsWithLabels }}
+    objectSelector:
+      matchExpressions:
+        {{ range $idx, $value := .Values.enabledForPodsWithLabels }}
+        - key: {{ $value }}
+          operator: Exists
+        {{ end }}
+    {{- end }}
+    namespaceSelector:
+      matchExpressions:
+      {{- if .Values.namespacesEnabled }}
+      - key: kubernetes.io/metadata.name
+        operator: In
+        values: [{{ range $index, $element := .Values.namespacesEnabled }}{{if $index}},{{end}}"{{$element}}"{{end}}]
+      {{- end }}
+      - key: kubernetes.io/metadata.name
+        operator: NotIn
+        values: [ {{ .Release.Namespace | quote }}{{ if .Values.namespacesDisabled }},{{ range $index, $element := .Values.namespacesDisabled }}{{if $index}},{{end}}"{{$element}}"{{end}}{{end}}]
+    rules:
+      # mutating webhook for pods - actual instrumentation
+      - operations: [ "CREATE" ]
+        apiGroups: [""]
+        apiVersions: ["v1"]
+        resources: ["pods"]
+
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  {{- if and ( .Values.useServiceCAonOCP ) ( .Capabilities.APIVersions.Has "apps.openshift.io/v1/DeploymentConfig") }}
+  annotations:
+    service.beta.openshift.io/inject-cabundle: 'true'
+  {{- end }}
+  name: {{ .Values.webhookName }}-validate
+webhooks:
+  - name: {{ ( printf "%s.%s.svc" (include "webhook-instrumentor.name" .) .Release.Namespace ) }}
+    sideEffects: NoneOnDryRun #instrumentation registration is a side effect!!!
+    admissionReviewVersions: ["v1", "v1beta1", "v1alpha1"]
+    timeoutSeconds: {{ .Values.timeoutSeconds | int }}
+    failurePolicy: {{ .Values.failurePolicy }}
+    clientConfig:
+      service:
+        name: {{ ( include "webhook-instrumentor.name" . ) }}
+        namespace: {{ .Release.Namespace }}
+        path: "/validate"
+        port: 7443
+      {{ if not ( and ( .Values.useServiceCAonOCP ) ( .Capabilities.APIVersions.Has "apps.openshift.io/v1/DeploymentConfig") )}}
+      {{ if not (hasKey .Values "certs") }}
+      caBundle: {{ $ca.Cert | b64enc | quote }}
+      {{ else }}
+      caBundle: {{ .Values.certs.caCert | quote }}
+      {{ end }}
+      {{ end }}
+    namespaceSelector:
+      matchExpressions:
+      {{- if .Values.namespacesEnabled }}
+      - key: kubernetes.io/metadata.name
+        operator: In
+        values: [{{ range $index, $element := .Values.namespacesEnabled }}{{if $index}},{{end}}"{{$element}}"{{end}}]
+      {{- end }}
+      - key: kubernetes.io/metadata.name
+        operator: NotIn
+        values: [ {{ .Release.Namespace | quote }}{{ if .Values.namespacesDisabled }},{{ range $index, $element := .Values.namespacesDisabled }}{{if $index}},{{end}}"{{$element}}"{{end}}{{end}}]
+    rules:
+      # admission webhook for cluster-wide instrumentation
+      - operations: [ "CREATE" ]
+        apiGroups: ["ext.appd.com"]
+        apiVersions: ["v1alpha1"]
+        resources: ["clusterinstrumentations"]
+      # admission webhook for namespaced instrumentation
+      - operations: [ "CREATE" ]
+        apiGroups: ["ext.appd.com"]
+        apiVersions: ["v1alpha1"]
+        resources: ["instrumentations"]
+      # admission webhook for namespaced OpenTelemetry collector
+      - operations: [ "CREATE" ]
+        apiGroups: ["ext.appd.com"]
+        apiVersions: ["v1alpha1"]
+        resources: ["opentelemetrycollectors"]

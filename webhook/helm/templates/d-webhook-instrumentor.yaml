@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.deploymentName }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ .Values.deploymentName }}
+spec:
+  replicas: {{ .Values.replicas }}
+  selector:
+    matchLabels:
+      app: {{ .Values.deploymentName }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.deploymentName }}
+    spec:
+      serviceAccountName: {{ .Values.serviceaccount }}
+      containers:
+      - name: {{ .Values.deploymentName }}
+        command: 
+        - /go/bin/webhook
+        {{ if .Values.otelTracing }}
+        - --otel-tracing=true
+        - --otel-service-name={{ .Values.otelTracing.serviceName }}
+        - --otel-service-namespace={{ .Release.Namespace }}
+        - --otel-endpoint={{ .Values.otelTracing.endpoint }}
+        - --otel-samples-per-million={{ .Values.otelTracing.samplesPerMillion }}
+        - --otel-log-layload={{ .Values.otelTracing.logPayload }}
+        {{ end }}
+        image: {{ .Values.image.image }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - containerPort: 8443
+          name: webhook-api
+        resources:
+          limits:
+            cpu: "1"
+            memory: 1Gi
+          requests:
+            cpu: 250m
+            memory: 200Mi
+        volumeMounts:
+        - name: {{ template "webhook-instrumentor.name" . }}-certs
+          mountPath: /run/secrets/tls
+          readOnly: true
+      volumes:
+      - name: {{ template "webhook-instrumentor.name" . }}-certs
+        secret:
+          secretName: {{ template "webhook-instrumentor.name" . }}-certs

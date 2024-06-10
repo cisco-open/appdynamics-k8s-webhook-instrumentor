@@ -1,0 +1,70 @@
+{{ range $key, $val := .Values.openTelemetryCollectors }}
+{{ if eq $val.mode "deployment" }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: otel-coll-{{ $key }}
+  namespace: {{ $.Release.Namespace }}
+spec:
+  selector:
+    app: otel-coll-{{ $key }}
+  ports:
+    - port: 4317
+      targetPort: otlp-grpc
+      name: otlp-grpc
+    - port: 4318
+      targetPort: otlp-http
+      name: otlp-http
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otel-coll-{{ $key }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    app: otel-coll-{{ $key }}
+spec:
+  replicas: {{ $val.replicas }}
+  selector:
+    matchLabels:
+      app: otel-coll-{{ $key }}
+  template:
+    metadata:
+      labels:
+        app: otel-coll-{{ $key }}
+    spec:
+      serviceAccountName: {{ $.Values.serviceaccount }}
+      containers:
+      - name: otel-coll-{{ $key }}
+        image: {{ $val.image.image }}
+        imagePullPolicy: {{ $val.image.imagePullPolicy }}
+        args:
+        - --config
+        - /conf/otel-collector-config.yaml
+        ports:
+        - containerPort: 4317
+          name: otlp-grpc
+        - containerPort: 4318
+          name: otlp-http
+        resources:
+          limits:
+            cpu: "1"
+            memory: 1Gi
+          requests:
+            cpu: 250m
+            memory: 200Mi
+        volumeMounts:
+        - name: otel-collector-config-vol
+          mountPath: /conf
+      volumes:
+        - configMap:
+            name: otel-collector-config
+            items:
+              - key: {{ $key }}.config
+                path: otel-collector-config.yaml
+          name: otel-collector-config-vol
+
+{{ end }}
+{{ end }}

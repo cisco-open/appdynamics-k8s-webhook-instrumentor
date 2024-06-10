@@ -2,7 +2,6 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  namespace: r
   name: myfirstapp
 spec:
   replicas: 1
@@ -17,8 +16,7 @@ spec:
         app: myfirstapp
         appdApp: MD-instr-wh
         appdInstr: do
-        # language: dotnetcore
-        language: uni
+        language: dotnetcore
     spec:
       containers:
       - name: myfirstapp
@@ -47,7 +45,6 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  namespace: r
   name: myfirstapp
   labels:
     run: myfirstapp

@@ -1,0 +1,22 @@
+{{ if .Values.openTelemetryCollectors }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-collector-config
+  namespace: {{ $.Release.Namespace }}
+data:
+{{ range $key, $val := .Values.openTelemetryCollectors }}
+  {{ $key }}.mode: {{ $val.mode }}
+  {{ if eq $val.mode "external" }}
+  {{ $key }}.serviceName: {{ $val.collectorEndpoint }}
+  {{ else }}
+  {{ $key }}.config: {{ (tpl (toYaml $val.config) (dict "Values" $.Values "Template" $.Template)) | indent 2 }}
+  {{ $key }}.image.image: {{ $val.image.image }}
+  {{ $key }}.image.imagePullPolicy: {{ $val.image.imagePullPolicy }}
+  {{ $key }}.image.initImage: {{ $val.image.initImage }}
+  {{ $key }}.serviceName: otel-coll-{{ $key }}.{{ $.Release.Namespace}}.svc.cluster.local
+  {{ end }}
+
+{{ end }}
+{{ end }}
