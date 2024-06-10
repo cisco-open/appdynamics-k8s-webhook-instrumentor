@@ -1,0 +1,18 @@
+apiVersion: ext.appd.com/v1alpha1
+kind: ClusterInstrumentation
+metadata:
+  name: java-instrumentation
+spec:
+  name: java-instrumentation
+  priority: 2
+  matchRules:
+    labels:
+    - language: java
+    podNameRegex: .*
+  injectionRules:
+    technology: java
+    image: appdynamics/java-agent:latest
+    javaEnvVar: _JAVA_OPTIONS
+    # technology java + openTelemetryCollector -> use AppD hybrid agent
+    openTelemetryCollector: cSaaS_Collector
+

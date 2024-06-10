@@ -1,0 +1,19 @@
+apiVersion: ext.appd.com/v1alpha1
+kind: Instrumentation
+metadata:
+  name: dotnetcore-instrumentation
+spec:
+  name: dotnetcore-instrumentation
+  priority: 2
+  matchRules:
+    labels:
+    - language: dotnetcore
+    - instrument: crd
+    podNameRegex: .*
+  injectionRules:
+    technology: dotnetcore
+    image: appdynamics/dotnet-core-agent:latest
+    openTelemetryCollector: test
+
+
+
