@@ -1,0 +1,47 @@
+{{ range $key, $val := .Values.dbAgents }}
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db-agent-{{ $key }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    app: db-agent-{{ $key }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: db-agent-{{ $key }}
+  template:
+    metadata:
+      labels:
+        app: db-agent-{{ $key }}
+    spec:
+      serviceAccountName: {{ $.Values.serviceaccount }}
+      containers:
+      - name: db-agent-{{ $key }}
+        image: {{ $val.image.image }}
+        imagePullPolicy: {{ $val.image.imagePullPolicy }}
+        env:
+        - name: APPDYNAMICS_CONTROLLER_HOST_NAME
+          value: {{ $.Values.appdController.host }}
+        - name: APPDYNAMICS_CONTROLLER_PORT
+          value: "{{ $.Values.appdController.port }}"
+        - name: APPDYNAMICS_CONTROLLER_SSL_ENABLED
+          value: "{{ $.Values.appdController.isSecure }}"
+        - name: APPDYNAMICS_AGENT_ACCOUNT_ACCESS_KEY
+          value: {{ $.Values.appdController.accessKey }}
+        - name: APPDYNAMICS_AGENT_ACCOUNT_NAME
+          value: {{ $.Values.appdController.accountName }}
+        - name: _JAVA_OPTIONS
+          value: -Ddbagent.name={{ $key }}
+        resources:
+          limits:
+            cpu: "1"
+            memory: 1Gi
+          requests:
+            cpu: 100m
+            memory: 200Mi
+
+{{ end }}
