@@ -1,6 +1,6 @@
 # AppDynamics K8S Webhook Instrumentor
 
-This project provides K8S mutating webhook, which, by pre-set rules, auto-instruments pods at their creation time with AppDynamics or OpenTelemetry agents. 
+This project provides a auto-instrumentation tool primarily for AppDynamics agents running in Kubernetes cluster, but provides also easy instrumentation by OpenTelemetry agents and other supported agents. Under the hood, it uses K8S mutating webhook, which, by pre-set rules, auto-instruments pods at their creation time with AppDynamics or other supported agents. 
 
 ## Why?
 
@@ -22,14 +22,14 @@ This project supports both AppDynamics hybrid agents and OpenTelemetry agents in
 
 ## Supported Agents
 
-| Language    | AppDynamics Native | AppDynamics Hybrid      | OpenTelemetry           | 
-| ----------- | ------------------ | ----------------------- | ----------------------- | 
-| Java        | :white_check_mark: | :white_check_mark:      | :white_check_mark:      | 
-| .NET (Core) | :white_check_mark: | :thinking:              | :building_construction: | 
-| Node.js     | :white_check_mark: | :building_construction: | :white_check_mark:      | 
-| Apache      | :thinking:         | :x:                     | :microscope:            | 
-| Nginx       | :x:                | :x:                     | :microscope:            | 
-| Go          | :x:                | :x:                     | :thinking:              | 
+| Agent Type / Language | AppDynamics Native | AppDynamics Hybrid      | OpenTelemetry           | Splunk                  |
+| --------------------- | ------------------ | ----------------------- | ----------------------- | ----------------------- |
+| Java                  | :white_check_mark: | :white_check_mark:      | :white_check_mark:      | :building_construction: |
+| .NET (Core)           | :white_check_mark: | :thinking:              | :white_check_mark:      | :x:                     |
+| Node.js               | :white_check_mark: | :building_construction: | :white_check_mark:      | :building_construction: |
+| Apache                | :thinking:         | :x:                     | :white_check_mark:      | :x:                     |
+| Nginx                 | :x:                | :x:                     | :white_check_mark:      | :x:                     |
+| Go                    | :x:                | :x:                     | :thinking:              | :x:                     |
 
 |Icon                    |Support level           |
 |------------------------|------------------------|
@@ -62,15 +62,119 @@ helm repo update
 helm install --namespace=<namespace> <chart-name> mwh/webhook-instrumentor --values=<values-file>
 ```
 
+(For `values.yaml` file, see **How to configure?** section)
+
 to upgrade after values change:
 - on OpenShift, you can use `helm upgrade`
 - on Kubernetes, use `helm delete <chart-name>` `helm install ...` commands for the time being
 
 ## How to configure?
 
-If using helm, modify values.yaml for helm chart parameters
+Before deploying via Helm chart, modify values.yaml for helm chart parameters
 
-See `values-sample.yaml` for inspiration and this [Blog Post](<https://chrlic.github.io/appd-mwh-blog/>) to get started.
+See `values-sample.yaml` in `webhook/helm` directory for inspiration and this [Blog Post](<https://chrlic.github.io/appd-mwh-blog/>) to get started.
+
+The Helm chart always deploys the mutating webhook processes, set's up necessary security for the instrumentation to work. 
+
+Instrumentation rules and OpenTelemetry collectors in use can be defined in tow ways:
+- as part of `values.yaml` file for Helm chart
+- via custom resource definitions (CRDs)
+- by combination of both
+
+### Using CRDs for Instrumentation rule definition
+
+There are two custom resources definitions created by the Helm chart enabling to define application instrumentation rules:
+- API `ext.appd.com/v1alpha1` resource `Instrumentation` - namespaced resource, which defines instrumentation rules
+- API `ext.appd.com/v1alpha1` resource `ClusterInstrumentation` - cluster-wide resource, which defines instrumentation rules
+
+Syntax and options for instrumentation rules are common across `values.yaml`, `Instrumentation`, and `ClusterInstrumentation` and the rule is applied by first match of the `matchRules` defined in individual rules. The order of evaluation is following:
+- Rules defined by `Instrumentation` definitions in the same namespace, as the instrumented pod. Each rule can have `.spec.priority` defined (default = 1), higher priorities are evaluated first. Order of rules with the same priority is not deterministic.
+- Rules defined by `ClusterInstrumentation` definitions. Those rules are shared for all pods and namespaces, unless the namespace is excluded. Each rule can have `.spec.priority` defined (default = 1), higher priorities are evaluated first. Order of rules with the same priority is not deterministic.
+- Rules defined by the `values.yaml` file for Helm chart. Those rules are evaluated in the order they are present in the file. Unlike rules defined by CRDs, rules can use templates to simplify the definitions. 
+
+Example:
+
+~~~
+apiVersion: ext.appd.com/v1alpha1
+kind: Instrumentation
+metadata:
+  name: java-instrumentation
+spec:
+  name: java-instrumentation
+  priority: 2
+  matchRules:
+    # must match both labels and their values.
+    # values defined here are regexes!
+    labels: 
+    - language: java 
+    - otel: appd
+    podNameRegex: .*
+  injectionRules:
+    technology: java     # defines the agent type to use
+    image: appdynamics/java-agent:latest
+    javaEnvVar: _JAVA_OPTIONS
+    openTelemetryCollector: test # enables OpenTelemetry and defines the collector to use
+~~~
+
+### Using CRDs for OpenTelemetry collector definition
+
+When using OpenTelemetry, collector generally has to be deployed somewhere, usually on the same K8S cluster. This tool enables to provision 3 `.spec.mode` of collectors:
+- `deployment` - collector running as `Deployment` with a `Service` published for application to send the signals to. This is managed by this tool.
+- `sidecar`  - collector running as a sidecar in the same pod as application itself. This is injected into the pod by this tool
+- `external` - collector running independently of this tool, not managed by this tool - it's expected you setup this collector another way yourselves. It can even run anywhere like on different cluster, VM, or in the cloud. 
+
+When using resource `ext.appd.com/v1alpha1` - `OpenTelemetryCollector`, and `deployment` mode, this tool will spin up a collector in the same namespace where this resource definition is created. When you delete the `OpenTelementryCollector` resource, collector will be also deleted. 
+
+Example:
+
+~~~
+apiVersion: ext.appd.com/v1alpha1
+kind: OpenTelemetryCollector
+metadata:
+  name: test
+spec:
+  replicas: 1
+  image: otel/opentelemetry-collector-contrib:latest
+  imagePullPolicy: Always
+  mode: deployment
+  config: |-
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+          http:
+    processors:
+      batch:
+      resource:
+        attributes:
+        - key: appdynamics.controller.account
+          action: upsert
+          value: "<<APPD_ACCOUNT>>"
+        - key: appdynamics.controller.host
+          action: upsert     
+          value: "<<APPD_CONTROLLER>>"
+        - key: appdynamics.controller.port
+          action: upsert
+          value: <<APPD_CONTROLLER_PORT>>
+    exporters:
+      logging:
+        loglevel: debug
+      # This part says that the opentelemetry collector will send data to OTIS pipeline for AppDynamicas CSaaS.
+      otlphttp:
+        tls:
+          insecure: true
+        endpoint: "<<APPD_OTEL_SERVICE>>"
+        headers: {"x-api-key": <<APPD_OTEL_AUTH_KEY>>}
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [batch, resource]
+          exporters: [logging, otlphttp]
+      telemetry:
+        logs:
+          level: "debug"
+~~~
 
 More examples and documentation is coming soon. 
 
