@@ -114,6 +114,36 @@ spec:
                           description: Memory allocation reservation value
                           type: string
                       type: object
+                    splunkConfig:
+                      properties:
+                        deploymentEnvironmentName:
+                          type: string
+                        deploymentEnvironmentNameAnnotation:
+                          type: string
+                        deploymentEnvironmentNameExpression:
+                          type: string
+                        deploymentEnvironmentNameLabel:
+                          type: string
+                        deploymentEnvironmentNameSource:
+                          description: Source of deployment.environment
+                          enum:
+                          - manual
+                          - label
+                          - annotation
+                          - namespace
+                          - namespaceLabel
+                          - namespaceAnnotation
+                          - expression
+                          type: string
+                        k8sClusterName:
+                          type: string
+                        splunkMemoryProfiler:
+                          type: boolean
+                        splunkMetricsEnabled:
+                          type: boolean
+                        splunkProfilerAlwaysOn:
+                          type: boolean
+                      type: object
                     technology:
                       description: The programming language or solution to instrument
                       enum:
@@ -225,6 +255,36 @@ spec:
                       memory:
                         description: Memory allocation reservation value
                         type: string
+                    type: object
+                  splunkConfig:
+                    properties:
+                      deploymentEnvironmentName:
+                        type: string
+                      deploymentEnvironmentNameAnnotation:
+                        type: string
+                      deploymentEnvironmentNameExpression:
+                        type: string
+                      deploymentEnvironmentNameLabel:
+                        type: string
+                      deploymentEnvironmentNameSource:
+                        description: Source of deployment.environment
+                        enum:
+                        - manual
+                        - label
+                        - annotation
+                        - namespace
+                        - namespaceLabel
+                        - namespaceAnnotation
+                        - expression
+                        type: string
+                      k8sClusterName:
+                        type: string
+                      splunkMemoryProfiler:
+                        type: boolean
+                      splunkMetricsEnabled:
+                        type: boolean
+                      splunkProfilerAlwaysOn:
+                        type: boolean
                     type: object
                   technology:
                     description: The programming language or solution to instrument

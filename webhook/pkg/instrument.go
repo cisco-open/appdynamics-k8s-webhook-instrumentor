@@ -113,6 +113,8 @@ func applyInjectionRule(pod corev1.Pod, instrRule *v1alpha1.InstrumentationSpec)
 		patchOps = append(patchOps, appdInstrumentation(pod, instrRule)...)
 	case "otel":
 		patchOps = append(patchOps, otelInstrumentation(pod, instrRule)...)
+	case "splunk":
+		patchOps = append(patchOps, splunkInstrumentation(pod, instrRule)...)
 	}
 
 	return patchOps
@@ -169,6 +171,32 @@ func otelInstrumentation(pod corev1.Pod, instrRule *v1alpha1.InstrumentationSpec
 		patchOps = append(patchOps, apacheOtelInstrumentation(pod, instrRule)...)
 	case "nginx":
 		patchOps = append(patchOps, nginxOtelInstrumentation(pod, instrRule)...)
+	default:
+		patchOps = append(patchOps, getInstrumentationStatusPatch("FAILED", "Technology for injection not specified or unknown")...)
+	}
+
+	return patchOps
+}
+
+func splunkInstrumentation(pod corev1.Pod, instrRule *v1alpha1.InstrumentationSpec) []patchOperation {
+
+	patchOps := []patchOperation{}
+
+	patchOps = append(patchOps, patchOperation{
+		Op:    "add",
+		Path:  "/metadata/annotations/SPLUNK_INSTRUMENTATION_VIA_RULE",
+		Value: string(instrRule.Name),
+	})
+
+	technology, _ := getTechnologyAndProvider(instrRule.InjectionRules.Technology)
+
+	switch technology {
+	case "java":
+		patchOps = append(patchOps, javaSplunkInstrumentation(pod, instrRule)...)
+	case "dotnetcore":
+		// patchOps = append(patchOps, dotnetSplunkInstrumentation(pod, instrRule)...)
+	case "nodejs":
+		// patchOps = append(patchOps, nodejsSplunkInstrumentation(pod, instrRule)...)
 	default:
 		patchOps = append(patchOps, getInstrumentationStatusPatch("FAILED", "Technology for injection not specified or unknown")...)
 	}
@@ -267,6 +295,79 @@ func getTierName(pod corev1.Pod, instrRule *v1alpha1.InstrumentationSpec) string
 	return tierName
 }
 
+func getSplunkDeploymentEnvironment(pod corev1.Pod, instrRule *v1alpha1.InstrumentationSpec) string {
+	dEnvName := ""
+	injRules := instrRule.InjectionRules.SplunkConfig
+	switch injRules.DeploymentEnvironmentNameSource {
+	case "manual":
+		dEnvName = injRules.DeploymentEnvironmentName
+	case "label":
+		dEnvName = pod.GetLabels()[injRules.DeploymentEnvironmentNameLabel]
+	case "annotation":
+		dEnvName = pod.GetAnnotations()[injRules.DeploymentEnvironmentNameAnnotation]
+	case "namespace":
+		dEnvName = pod.GetNamespace()
+	case "namespaceLabel":
+		nsName := pod.GetNamespace()
+		ns, err := clientset.CoreV1().Namespaces().Get(context.Background(), nsName, metav1.GetOptions{})
+		if err != nil {
+			log.Printf("Cannot read namespace %s: %v\n", nsName, err)
+			dEnvName = nsName
+		} else {
+			dEnvName = ns.GetLabels()[injRules.DeploymentEnvironmentNameLabel]
+		}
+	case "namespaceAnnotation":
+		nsName := pod.GetNamespace()
+		ns, err := clientset.CoreV1().Namespaces().Get(context.Background(), nsName, metav1.GetOptions{})
+		if err != nil {
+			log.Printf("Cannot read namespace %s: %v\n", nsName, err)
+			dEnvName = nsName
+		} else {
+			dEnvName = ns.GetAnnotations()[injRules.DeploymentEnvironmentNameAnnotation]
+		}
+	case "expression":
+		tmpl, err := template.New("expr").Parse(injRules.DeploymentEnvironmentNameExpression)
+		if err != nil {
+			log.Printf("Cannot parse deployment environment name expression %s: %v\n", injRules.DeploymentEnvironmentNameExpression, err)
+			dEnvName = "DEFAULT_DEPLOYMENT_ENVIRONMENT"
+		} else {
+			nsName := pod.GetNamespace()
+			ns, err := clientset.CoreV1().Namespaces().Get(context.Background(), nsName, metav1.GetOptions{})
+			if err != nil {
+				log.Printf("Cannot read namespace %s: %v\n", nsName, err)
+				dEnvName = nsName
+			} else {
+				params := TemplateParams{
+					Labels:               pod.GetLabels(),
+					Annotations:          pod.GetAnnotations(),
+					NamespaceLabels:      ns.GetLabels(),
+					NamespaceAnnotations: ns.GetAnnotations(),
+					Namespace:            pod.GetNamespace(),
+				}
+				var nameBytes bytes.Buffer
+				tmpl.Execute(&nameBytes, params)
+				dEnvName = nameBytes.String()
+			}
+		}
+	default:
+		dEnvName = "DEFAULT_DEPLOYMENT_ENVIRONMENT"
+	}
+	return dEnvName
+}
+
+func getSplunkClusterName(_ corev1.Pod, instrRule *v1alpha1.InstrumentationSpec) string {
+	clusterName := ""
+	injRules := instrRule.InjectionRules.SplunkConfig
+
+	clusterName = injRules.K8SClusterName
+
+	if clusterName == "" {
+		clusterName = "DEFAULT_K8S_CLUSTER"
+	}
+
+	return clusterName
+}
+
 func getInstrumentationStatusPatch(status string, reason string) []patchOperation {
 	patchOps := []patchOperation{}
 
@@ -362,6 +463,19 @@ func addK8SOtelResourceAttrs(pod corev1.Pod, instrRules *v1alpha1.Instrumentatio
 			Op:   "add",
 			Path: fmt.Sprintf("/spec/containers/%d/env/-", containerIdx),
 			Value: corev1.EnvVar{
+				Name: "K8S_POD_UID",
+				ValueFrom: &corev1.EnvVarSource{
+					FieldRef: &corev1.ObjectFieldSelector{
+						FieldPath: "metadata.uid",
+					},
+				},
+			},
+		})
+
+		patchOps = append(patchOps, patchOperation{
+			Op:   "add",
+			Path: fmt.Sprintf("/spec/containers/%d/env/-", containerIdx),
+			Value: corev1.EnvVar{
 				Name: "K8S_NAMESPACE_NAME",
 				ValueFrom: &corev1.EnvVarSource{
 					FieldRef: &corev1.ObjectFieldSelector{
@@ -372,10 +486,15 @@ func addK8SOtelResourceAttrs(pod corev1.Pod, instrRules *v1alpha1.Instrumentatio
 		})
 
 		containerName := pod.Spec.Containers[containerIdx].Name
-		otelResourceAttributes := "k8s.pod.ip=$(K8S_POD_IP),k8s.pod.name=$(K8S_POD_NAME),k8s.namespace.name=$(K8S_NAMESPACE_NAME)"
+		otelResourceAttributes := "k8s.pod.ip=$(K8S_POD_IP),k8s.pod.name=$(K8S_POD_NAME),k8s.pod.uid=$(K8S_POD_UID),k8s.namespace.name=$(K8S_NAMESPACE_NAME)"
 		otelResourceAttributes = otelResourceAttributes + ",k8s.container.name=" + containerName
 		// TODO - think about getting right number of restarts
 		otelResourceAttributes = otelResourceAttributes + ",k8s.container.restart_count=0"
+		if instrRules.InjectionRules.SplunkConfig != nil {
+			otelResourceAttributes = otelResourceAttributes +
+				",deployment.environment=" + getSplunkDeploymentEnvironment(pod, instrRules) +
+				",k8s.cluster.name=" + getSplunkClusterName(pod, instrRules)
+		}
 
 		if preSetOtelResAttrs != "" {
 			otelResourceAttributes = preSetOtelResAttrs + "," + otelResourceAttributes
