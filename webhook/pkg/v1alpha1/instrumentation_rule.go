@@ -72,6 +72,21 @@ type InjectionRule struct {
 	EnvVars                    []NameValue          `json:"env,omitempty" yaml:"env,omitempty"`
 	Options                    []NameValue          `json:"options,omitempty" yaml:"options,omitempty"`
 	InjectK8SOtelResourceAttrs *bool                `json:"injectK8SOtelResourceAttrs,omitempty" yaml:"injectK8SOtelResourceAttrs,omitempty"`
+	SplunkConfig               *SplunkConfig        `json:"splunkConfig,omitempty" yaml:"splunkConfig,omitempty"`
+}
+
+type SplunkConfig struct {
+	SplunkProfilerAlwaysOn *bool `json:"splunkProfilerAlwaysOn,omitempty" yaml:"splunkProfilerAlwaysOn,omitempty"`
+	SplunkMemoryProfiler   *bool `json:"splunkMemoryProfiler,omitempty" yaml:"splunkMemoryProfiler,omitempty"`
+	SplunkMetricsEnabled   *bool `json:"splunkMetricsEnabled,omitempty" yaml:"splunkMetricsEnabled,omitempty"`
+	// Source of deployment.environment
+	// +kubebuilder:validation:Enum=manual;label;annotation;namespace;namespaceLabel;namespaceAnnotation;expression
+	DeploymentEnvironmentNameSource     string `json:"deploymentEnvironmentNameSource,omitempty" yaml:"deploymentEnvironmentNameSource,omitempty"`
+	DeploymentEnvironmentName           string `json:"deploymentEnvironmentName,omitempty" yaml:"deploymentEnvironmentName,omitempty"`
+	DeploymentEnvironmentNameLabel      string `json:"deploymentEnvironmentNameLabel,omitempty" yaml:"deploymentEnvironmentNameLabel,omitempty"`
+	DeploymentEnvironmentNameAnnotation string `json:"deploymentEnvironmentNameAnnotation,omitempty" yaml:"deploymentEnvironmentNameAnnotation,omitempty"`
+	DeploymentEnvironmentNameExpression string `json:"deploymentEnvironmentNameExpression,omitempty" yaml:"deploymentEnvironmentNameExpression,omitempty"`
+	K8SClusterName                      string `json:"k8sClusterName,omitempty" yaml:"k8sClusterName,omitempty"`
 }
 
 type NameValue struct {

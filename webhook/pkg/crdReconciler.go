@@ -127,11 +127,11 @@ func (r *reconcileInstrCrd) Reconcile(ctx context.Context, request reconcile.Req
 
 	if !instr.DeletionTimestamp.IsZero() {
 		log.Info("Deleting Instrumentation", "data", *instr)
-		deleteCrdInstrumentation(request.Namespace, request.Name)
+		deleteCrdInstrumentation(request.Namespace, instr.Name)
 	} else {
 		log.Info("Upserting Instrumentation", "data", *instr)
 		injectionRuleDefaults(instr.Spec.InjectionRules)
-		upsertCrdInstrumentation(request.Namespace, request.Name, instr.Spec)
+		upsertCrdInstrumentation(request.Namespace, instr.Name, instr.Spec)
 		// Set the label if it is missing
 		if instr.Annotations == nil {
 			instr.Annotations = map[string]string{}
@@ -173,11 +173,11 @@ func (r *reconcileGInstrCrd) Reconcile(ctx context.Context, request reconcile.Re
 
 	if !instr.DeletionTimestamp.IsZero() {
 		log.Info("Deleting ClusterInstrumentation", "data", *instr)
-		deleteCrdClusterInstrumentation(request.Name)
+		deleteCrdClusterInstrumentation(instr.Name)
 	} else {
 		log.Info("Upserting ClusterInstrumentation", "data", *instr)
 		injectionRuleDefaults(instr.Spec.InjectionRules)
-		upsertCrdClusterInstrumentation(request.Name, instr.Spec)
+		upsertCrdClusterInstrumentation(instr.Name, instr.Spec)
 		// Set the label if it is missing
 		if instr.Annotations == nil {
 			instr.Annotations = map[string]string{}
