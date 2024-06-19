@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: javatest
+  annotations:
+    annot1: my-annotation
+  labels:
+    app: vendors
+    appdApp: MD-Hybrid-App
+    otel: appd
+    language: java
+spec:
+  containers:
+  - name: vendors
+    image: chrlic/echoapp:latest 
+    imagePullPolicy: Always
+    ports:
+    - containerPort: 8181
+    resources:
+      limits:
+        cpu: "1"
+        memory: 500Mi
+      requests:
+        cpu: 250m
+        memory: 100Mi
