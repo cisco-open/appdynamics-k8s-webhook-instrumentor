@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -443,6 +442,19 @@ func injectionRuleTemplate(injRules *v1alpha1.InjectionRule, injTempRules *v1alp
 	injRules.EnvVars = mergeNameValues(injRules.EnvVars, injTempRules.EnvVars)
 	injRules.Options = mergeNameValues(injRules.Options, injTempRules.Options)
 	injRules.InjectK8SOtelResourceAttrs = applyTemplateBool(injRules.InjectK8SOtelResourceAttrs, injTempRules.InjectK8SOtelResourceAttrs, false)
+	if injRules.SplunkConfig == nil && injTempRules.SplunkConfig != nil {
+		injRules.SplunkConfig = &v1alpha1.SplunkConfig{}
+		injRules.SplunkConfig.SplunkProfilerAlwaysOn = applyTemplateBool(injRules.SplunkConfig.SplunkProfilerAlwaysOn, injTempRules.SplunkConfig.SplunkProfilerAlwaysOn, false)
+		injRules.SplunkConfig.SplunkMemoryProfiler = applyTemplateBool(injRules.SplunkConfig.SplunkMemoryProfiler, injTempRules.SplunkConfig.SplunkMemoryProfiler, false)
+		injRules.SplunkConfig.SplunkMetricsEnabled = applyTemplateBool(injRules.SplunkConfig.SplunkMetricsEnabled, injTempRules.SplunkConfig.SplunkMetricsEnabled, false)
+		injRules.SplunkConfig.DeploymentEnvironmentName = applyTemplateString(injRules.SplunkConfig.DeploymentEnvironmentName, injTempRules.SplunkConfig.DeploymentEnvironmentName)
+		injRules.SplunkConfig.DeploymentEnvironmentNameSource = applyTemplateString(injRules.SplunkConfig.DeploymentEnvironmentNameSource, injTempRules.SplunkConfig.DeploymentEnvironmentNameSource)
+		injRules.SplunkConfig.DeploymentEnvironmentNameSource = applyTemplateString(injRules.SplunkConfig.DeploymentEnvironmentNameSource, "namespace")
+		injRules.SplunkConfig.DeploymentEnvironmentNameLabel = applyTemplateString(injRules.SplunkConfig.DeploymentEnvironmentNameLabel, injTempRules.SplunkConfig.DeploymentEnvironmentNameLabel)
+		injRules.SplunkConfig.DeploymentEnvironmentNameAnnotation = applyTemplateString(injRules.SplunkConfig.DeploymentEnvironmentNameAnnotation, injTempRules.SplunkConfig.DeploymentEnvironmentNameAnnotation)
+		injRules.SplunkConfig.DeploymentEnvironmentNameExpression = applyTemplateString(injRules.SplunkConfig.DeploymentEnvironmentNameExpression, injTempRules.SplunkConfig.DeploymentEnvironmentNameExpression)
+		injRules.SplunkConfig.K8SClusterName = applyTemplateString(injRules.SplunkConfig.K8SClusterName, injTempRules.SplunkConfig.K8SClusterName)
+	}
 	///
 	return injRules
 }
@@ -566,7 +578,7 @@ func runsOnOpenShift() bool {
 }
 
 func getMyNamespace() string {
-	namespaceBytes, err := ioutil.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
+	namespaceBytes, err := os.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
 	namespace := string(namespaceBytes)
 	if err != nil {
 		log.Printf("Cannot read namespace from serviceaccount directory: %v\n", err)
@@ -630,6 +642,8 @@ func configHandler() http.Handler {
 		switch r.Method {
 		case "GET":
 			log.Printf("Config GET called\n")
+			buff := []byte(instrumentationAsString())
+			w.Write(buff)
 		case "POST":
 			log.Printf("Config POST called\n")
 		default:
@@ -653,7 +667,7 @@ func upsertCrdInstrumentation(namespace string, name string, instr v1alpha1.Inst
 	}
 	namespaceInstrs := config.InstrumentationNamespacedCrds[namespace]
 
-	upsertInstrumentationSpecInConfig(namespaceInstrs, name, instr)
+	upsertInstrumentationSpecInConfig(namespaceInstrs, namespace+"/"+name, instr)
 }
 
 func deleteCrdInstrumentation(namespace string, name string) {
@@ -666,7 +680,7 @@ func deleteCrdInstrumentation(namespace string, name string) {
 	}
 	namespaceInstrs := config.InstrumentationNamespacedCrds[namespace]
 
-	deleteInstrumentationSpecInConfig(namespaceInstrs, name)
+	deleteInstrumentationSpecInConfig(namespaceInstrs, namespace+"/"+name)
 }
 
 func upsertCrdClusterInstrumentation(name string, instr v1alpha1.InstrumentationSpec) {
@@ -676,17 +690,19 @@ func upsertCrdClusterInstrumentation(name string, instr v1alpha1.Instrumentation
 	// Instrumentation rule name is always taken from the CRD name
 	instr.Name = "*cluster*/" + name
 
-	upsertInstrumentationSpecInConfig(config.InstrumentationClusterCrds, name, instr)
+	upsertInstrumentationSpecInConfig(config.InstrumentationClusterCrds, "*cluster*/"+name, instr)
 }
 
 func deleteCrdClusterInstrumentation(name string) {
 	config.mutex.Lock()
 	defer config.mutex.Unlock()
 
-	deleteInstrumentationSpecInConfig(config.InstrumentationClusterCrds, name)
+	deleteInstrumentationSpecInConfig(config.InstrumentationClusterCrds, "*cluster*/"+name)
 }
 
 func upsertInstrumentationSpecInConfig(specs *InstrumentationConfig, name string, instr v1alpha1.InstrumentationSpec) {
+
+	log.Default().Printf("Upserting %s, %s", name, instr.Name)
 
 	found := false
 	for i, spec := range *specs {
@@ -696,6 +712,8 @@ func upsertInstrumentationSpecInConfig(specs *InstrumentationConfig, name string
 			break
 		}
 	}
+	log.Default().Printf("Upserting %s, %s, %t", name, instr.Name, found)
+
 	if !found {
 		(*specs) = append((*specs), instr)
 	}
