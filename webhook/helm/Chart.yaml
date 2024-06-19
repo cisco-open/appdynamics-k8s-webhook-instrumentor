@@ -1,0 +1,9 @@
+apiVersion: v1
+name: webhook-instrumentor
+version: 0.2.2
+description: Kubernetes Mutating Webhook for AppDynamics auto-instrumentation
+icon: https://github.com/kubernetes/kubernetes/blob/master/logo/logo.png
+maintainers:
+  - name: Martin Divis
+    email: mdivis@cisco.com
+engine: gotpl

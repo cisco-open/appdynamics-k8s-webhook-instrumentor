@@ -1,0 +1,371 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.14.0
+  name: instrumentations.ext.appd.com
+spec:
+  group: ext.appd.com
+  names:
+    kind: Instrumentation
+    listKind: InstrumentationList
+    plural: instrumentations
+    shortNames:
+    - instr
+    - instrs
+    singular: instrumentation
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: Instrumentation defines how to inject agent into workload.
+            properties:
+              injectionRuleSet:
+                items:
+                  properties:
+                    applicationName:
+                      type: string
+                    applicationNameAnnotation:
+                      type: string
+                    applicationNameExpression:
+                      type: string
+                    applicationNameLabel:
+                      type: string
+                    applicationNameSource:
+                      description: Source of AppDynamics application name
+                      enum:
+                      - manual
+                      - label
+                      - annotation
+                      - namespace
+                      - namespaceLabel
+                      - namespaceAnnotation
+                      - expression
+                      type: string
+                    doNotInstrument:
+                      type: boolean
+                    env:
+                      items:
+                        properties:
+                          name:
+                            description: Variable name
+                            type: string
+                          value:
+                            description: Variable value
+                            type: string
+                        type: object
+                      type: array
+                    image:
+                      type: string
+                    injectK8SOtelResourceAttrs:
+                      type: boolean
+                    javaCustomConfig:
+                      type: string
+                    javaEnvVar:
+                      type: string
+                    logLevel:
+                      type: string
+                    netvizPort:
+                      type: string
+                    openTelemetryCollector:
+                      type: string
+                    options:
+                      items:
+                        properties:
+                          name:
+                            description: Variable name
+                            type: string
+                          value:
+                            description: Variable value
+                            type: string
+                        type: object
+                      type: array
+                    resourceReservation:
+                      properties:
+                        cpu:
+                          description: CPU reservation value
+                          type: string
+                        memory:
+                          description: Memory allocation reservation value
+                          type: string
+                      type: object
+                    splunkConfig:
+                      properties:
+                        deploymentEnvironmentName:
+                          type: string
+                        deploymentEnvironmentNameAnnotation:
+                          type: string
+                        deploymentEnvironmentNameExpression:
+                          type: string
+                        deploymentEnvironmentNameLabel:
+                          type: string
+                        deploymentEnvironmentNameSource:
+                          description: Source of deployment.environment
+                          enum:
+                          - manual
+                          - label
+                          - annotation
+                          - namespace
+                          - namespaceLabel
+                          - namespaceAnnotation
+                          - expression
+                          type: string
+                        k8sClusterName:
+                          type: string
+                        splunkMemoryProfiler:
+                          type: boolean
+                        splunkMetricsEnabled:
+                          type: boolean
+                        splunkProfilerAlwaysOn:
+                          type: boolean
+                      type: object
+                    technology:
+                      description: The programming language or solution to instrument
+                      enum:
+                      - java
+                      - dotnetcore
+                      - nodejs
+                      - apache
+                      - nginx
+                      - java/appd
+                      - dotnetcore/appd
+                      - nodejs/appd
+                      - apache/appd
+                      - nginx/appd
+                      - java/otel
+                      - dotnetcore/otel
+                      - nodejs/otel
+                      - apache/otel
+                      - nginx/otel
+                      type: string
+                    template:
+                      type: string
+                    tierName:
+                      type: string
+                    tierNameAnnotation:
+                      type: string
+                    tierNameExpression:
+                      type: string
+                    tierNameLabel:
+                      type: string
+                    tierNameSource:
+                      description: Source of AppDynamics tier name
+                      enum:
+                      - auto
+                      - manual
+                      - label
+                      - annotation
+                      - namespace
+                      type: string
+                    usePodNameForNodeName:
+                      type: boolean
+                  type: object
+                type: array
+              injectionRules:
+                description: Injection rule specifies how the instrumentation should
+                  be done
+                properties:
+                  applicationName:
+                    type: string
+                  applicationNameAnnotation:
+                    type: string
+                  applicationNameExpression:
+                    type: string
+                  applicationNameLabel:
+                    type: string
+                  applicationNameSource:
+                    description: Source of AppDynamics application name
+                    enum:
+                    - manual
+                    - label
+                    - annotation
+                    - namespace
+                    - namespaceLabel
+                    - namespaceAnnotation
+                    - expression
+                    type: string
+                  doNotInstrument:
+                    type: boolean
+                  env:
+                    items:
+                      properties:
+                        name:
+                          description: Variable name
+                          type: string
+                        value:
+                          description: Variable value
+                          type: string
+                      type: object
+                    type: array
+                  image:
+                    type: string
+                  injectK8SOtelResourceAttrs:
+                    type: boolean
+                  javaCustomConfig:
+                    type: string
+                  javaEnvVar:
+                    type: string
+                  logLevel:
+                    type: string
+                  netvizPort:
+                    type: string
+                  openTelemetryCollector:
+                    type: string
+                  options:
+                    items:
+                      properties:
+                        name:
+                          description: Variable name
+                          type: string
+                        value:
+                          description: Variable value
+                          type: string
+                      type: object
+                    type: array
+                  resourceReservation:
+                    properties:
+                      cpu:
+                        description: CPU reservation value
+                        type: string
+                      memory:
+                        description: Memory allocation reservation value
+                        type: string
+                    type: object
+                  splunkConfig:
+                    properties:
+                      deploymentEnvironmentName:
+                        type: string
+                      deploymentEnvironmentNameAnnotation:
+                        type: string
+                      deploymentEnvironmentNameExpression:
+                        type: string
+                      deploymentEnvironmentNameLabel:
+                        type: string
+                      deploymentEnvironmentNameSource:
+                        description: Source of deployment.environment
+                        enum:
+                        - manual
+                        - label
+                        - annotation
+                        - namespace
+                        - namespaceLabel
+                        - namespaceAnnotation
+                        - expression
+                        type: string
+                      k8sClusterName:
+                        type: string
+                      splunkMemoryProfiler:
+                        type: boolean
+                      splunkMetricsEnabled:
+                        type: boolean
+                      splunkProfilerAlwaysOn:
+                        type: boolean
+                    type: object
+                  technology:
+                    description: The programming language or solution to instrument
+                    enum:
+                    - java
+                    - dotnetcore
+                    - nodejs
+                    - apache
+                    - nginx
+                    - java/appd
+                    - dotnetcore/appd
+                    - nodejs/appd
+                    - apache/appd
+                    - nginx/appd
+                    - java/otel
+                    - dotnetcore/otel
+                    - nodejs/otel
+                    - apache/otel
+                    - nginx/otel
+                    type: string
+                  template:
+                    type: string
+                  tierName:
+                    type: string
+                  tierNameAnnotation:
+                    type: string
+                  tierNameExpression:
+                    type: string
+                  tierNameLabel:
+                    type: string
+                  tierNameSource:
+                    description: Source of AppDynamics tier name
+                    enum:
+                    - auto
+                    - manual
+                    - label
+                    - annotation
+                    - namespace
+                    type: string
+                  usePodNameForNodeName:
+                    type: boolean
+                type: object
+              matchRules:
+                description: Match rule matches the workload for injection
+                properties:
+                  annotations:
+                    description: List of annotations and their regex values to match
+                    items:
+                      additionalProperties:
+                        type: string
+                      type: object
+                    type: array
+                  labels:
+                    description: List of labels and their regex values to match
+                    items:
+                      additionalProperties:
+                        type: string
+                      type: object
+                    type: array
+                  namespaceRegex:
+                    description: Regex by which to match namespace of the workload.
+                      Used only for ClusterInstrumentation.
+                    type: string
+                  podNameRegex:
+                    description: Regex to match names of pods
+                    type: string
+                type: object
+              name:
+                type: string
+              priority:
+                default: 1
+                description: Priority defines priority of this rule - 1 is lowest
+                type: integer
+            required:
+            - priority
+            type: object
+          status:
+            description: InstrumentationStatus defines status of the instrumentation.
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

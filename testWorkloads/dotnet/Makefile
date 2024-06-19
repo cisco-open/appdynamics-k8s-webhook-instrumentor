@@ -3,9 +3,9 @@ images:
 	docker push chrlic/sample-dotnet-app:latest
 
 deploy:
-	kubectl apply -f MyFirstApp/d-myfirstapp.yaml
+	kubectl -ndemo apply -f MyFirstApp/d-myfirstapp.yaml
 
 undeploy:
-	kubectl delete -f MyFirstApp/d-myfirstapp.yaml
+	kubectl -ndemo delete -f MyFirstApp/d-myfirstapp.yaml
 
 redeploy: undeploy deploy

@@ -1,0 +1,44 @@
+// always on profiling
+java -javaagent:./splunk-otel-javaagent.jar \
+-Dsplunk.profiler.enabled=true \
+-Dsplunk.profiler.memory.enabled=true \
+-Dotel.exporter.otlp.endpoint=http(s)://collector:4317 \
+-Dsplunk.metrics.endpoint=http(s)://collector:9943
+-jar <your_application>.jar
+
+or 
+export SPLUNK_PROFILER_MEMORY_ENABLED=true
+
+// metrics collection
+java -javaagent:./splunk-otel-javaagent.jar \
+-Dsplunk.metrics.enabled=true \
+-jar <myapp>.jar
+
+or
+export SPLUNK_METRICS_ENDPOINT='true'
+
+
+// deployment
+
+apiVersion: apps/v1
+kind: Deployment
+spec:
+selector:
+   matchLabels:
+      app: your-application
+template:
+   spec:
+      containers:
+      - name: myapp
+         env:
+            - name: SPLUNK_OTEL_AGENT
+            valueFrom:
+               fieldRef:
+                  fieldPath: status.hostIP
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+            value: "http://$(SPLUNK_OTEL_AGENT):4317"
+            - name: OTEL_SERVICE_NAME
+            value: "<serviceName>"
+            - name: OTEL_RESOURCE_ATTRIBUTES
+            value: "deployment.environment=<environmentName>"
+            
