@@ -37,3 +37,14 @@ testWorkloads/nodejs/testserver/node_modules
 testWorkloads/customErrorPlugin/
 testWorkloads/customErrorPlugin.zip
 testWorkloads/dotnet.zip
+webhook/v1alpha1/bin/**
+webhook/pkg/v1alpha1/bin/**
+webhook/bin/**
+webhook/env.sh
+webhook/test.sh
+webhook/examples/use-case-1-appd/**
+webhook/e2e-tests/helmDefaultValues copy.yaml
+webhook/e2e-tests/helmDefaultValuesTemp.yaml
+webhook/e2e-tests/secrets.txt
+webhook/e2e-tests/java/instr-otel/crd-otelcol_ori.yaml
+webhook/kubeconfig

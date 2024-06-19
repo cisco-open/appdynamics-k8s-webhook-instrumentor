@@ -1,0 +1,55 @@
+export NODE_OPTIONS: '--require /opt/splunk/shim.js'
+
+
+export OTEL_SERVICE_NAME=<yourServiceName>
+export OTEL_EXPORTER_OTLP_ENDPOINT=<yourCollectorEndpoint>:<yourCollectorPort>
+export OTEL_RESOURCE_ATTRIBUTES='deployment.environment=<envtype>,service.version=<version>'
+
+
+node -r @splunk/otel/instrument <your-app.js>
+
+// always on profiling
+SPLUNK_PROFILER_ENABLED=true
+SPLUNK_PROFILER_MEMORY_ENABLED=true
+
+start({
+   serviceName: '<service-name>',
+   endpoint: 'collectorhost:port',
+   profiling: {                       // Activates CPU profiling
+      memoryProfilingEnabled: true,   // Activates Memory profiling
+   }
+});
+
+// metrics collection
+export SPLUNK_METRICS_ENABLED='true'
+
+// override host name
+export OTEL_RESOURCE_ATTRIBUTES=host.name=<host_name>
+
+// deployment
+apiVersion: apps/v1
+kind: Deployment
+spec:
+selector:
+   matchLabels:
+      app: your-application
+template:
+   spec:
+      containers:
+      - name: myapp
+        image: your-app-image
+        env:
+         - name: SPLUNK_OTEL_AGENT
+           valueFrom:
+             fieldRef:
+               fieldPath: status.hostIP
+         - name: OTEL_EXPORTER_OTLP_ENDPOINT
+           value: "http://$(SPLUNK_OTEL_AGENT):4317"
+         - name: OTEL_SERVICE_NAME
+           value: "<serviceName>"
+         - name: OTEL_RESOURCE_ATTRIBUTES
+           value: "deployment.environment=<environmentName>"
+        command:
+         - node
+         - -r @splunk/otel/instrument
+         - <your-app>.js
