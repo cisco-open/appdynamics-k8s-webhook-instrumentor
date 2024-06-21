@@ -2,6 +2,18 @@ apiVersion: v1
 entries:
   webhook-instrumentor:
   - apiVersion: v1
+    created: "2024-06-21T09:40:32.052427838Z"
+    description: Kubernetes Mutating Webhook for AppDynamics auto-instrumentation
+    digest: c7c0861b7b68803d8577df3f0f1992b237b400e04dcf6d220d74d8b927fb654d
+    icon: https://github.com/kubernetes/kubernetes/blob/master/logo/logo.png
+    maintainers:
+    - email: mdivis@cisco.com
+      name: Martin Divis
+    name: webhook-instrumentor
+    urls:
+    - https://github.com/cisco-open/appdynamics-k8s-webhook-instrumentor/releases/download/webhook-instrumentor-0.3.0/webhook-instrumentor-0.3.0.tgz
+    version: 0.3.0
+  - apiVersion: v1
     created: "2023-06-09T13:35:24.124750375Z"
     description: Kubernetes Mutating Webhook for AppDynamics auto-instrumentation
     digest: 04e9e976f63222016a1d8b204f660a306194dddaf2264a8addfff3bac55eb58c
@@ -25,4 +37,4 @@ entries:
     urls:
     - https://github.com/cisco-open/appdynamics-k8s-webhook-instrumentor/releases/download/webhook-instrumentor-0.2.1/webhook-instrumentor-0.2.1.tgz
     version: 0.2.1
-generated: "2023-06-09T13:35:24.124761075Z"
+generated: "2024-06-21T09:40:32.05246664Z"
