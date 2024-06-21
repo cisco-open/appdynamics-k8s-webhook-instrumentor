@@ -4,21 +4,21 @@ This project provides a auto-instrumentation tool primarily for AppDynamics agen
 
 ## Why?
 
-### Why different autoinstrumentation for AppDynamics?
+### Why different auto-instrumentation for AppDynamics?
 
-AppDynamics offers autoinstrumentation functionality via Cluster Agent and it's configuration. Cluster Agent uses a strategy of 
+AppDynamics offers auto-instrumentation functionality via Cluster Agent and it's configuration. Cluster Agent uses a strategy of 
 modifying Deployments, DeploymentConfigs (on OpenShift), and StatefulSets when those match pre-set criteria, when pod specifications are modified so, that agent for supported languages is automatically injected into application container. 
 Kubernetes control plane then creates appropriate number of already instrumented pods. 
 
-While this approach offers a few benefits, among all ability to reverse instrumentation changes in inprobable case of issues introduced by an agent, there are also a few drawbacks, especially when using modern popular CD tooling such as Argo CD. In some cases, Cluster Agent is unable to detect changes in deployment specification made by those tools, which results in application not being instrumented, in other cases, like when using Argo CD, Cluster Agent and CD deployment tool end up in endless cycle of back and forth modifications of deployment specification, resulting in undesired number of application restarts and inconsistent monitoring.
+While this approach offers a few benefits, among all ability to reverse instrumentation changes in improbable case of issues introduced by an agent, there are also a few drawbacks, especially when using modern popular CD tooling such as Argo CD. In some cases, Cluster Agent is unable to detect changes in deployment specification made by those tools, which results in application not being instrumented, in other cases, like when using Argo CD, Cluster Agent and CD deployment tool end up in endless cycle of back and forth modifications of deployment specification, resulting in undesired number of application restarts and inconsistent monitoring.
 
 This project brings a method of agent injection directly to pod specification upon their instantiation wia mutating webhook, avoiding most of the corner cases mentioned above (the only significant being for example Argo CD deploying Pod directly and not via ReplicaSet  specification or Deployment/StatefulSet etc.). 
 
 ### Other use cases made possible
 
-With OpenTelemetry support in AppDynamics SaaS, it can be assumed users will want the same level of ease of agent installation as in case of traditional AppDynamics agents. While there is an official OpenTelemetry autoistrumentation functionality available at https://github.com/open-telemetry/opentelemetry-operator for official OpenTelemetry agents, AppDynamics offers also hybrid agent functionality in AppDynamics agents where agents emit both native and OpenTelemetry telemetry data. 
+With OpenTelemetry support in AppDynamics SaaS, it can be assumed users will want the same level of ease of agent installation as in case of traditional AppDynamics agents. While there is an official OpenTelemetry auto-instrumentation functionality available at https://github.com/open-telemetry/opentelemetry-operator for official OpenTelemetry agents, AppDynamics offers also hybrid agent functionality in AppDynamics agents where agents emit both native and OpenTelemetry telemetry data. 
 
-This project supports both AppDynamics hybrid agents and OpenTelemetry agents in several ways including ability to create OpenTelemetry collectors with speciified custom configuration. 
+This project supports both AppDynamics hybrid agents and OpenTelemetry agents in several ways including ability to create OpenTelemetry collectors with specified custom configuration. 
 
 ## Supported Agents
 
@@ -123,7 +123,7 @@ When using OpenTelemetry, collector generally has to be deployed somewhere, usua
 - `sidecar`  - collector running as a sidecar in the same pod as application itself. This is injected into the pod by this tool
 - `external` - collector running independently of this tool, not managed by this tool - it's expected you setup this collector another way yourselves. It can even run anywhere like on different cluster, VM, or in the cloud. 
 
-When using resource `ext.appd.com/v1alpha1` - `OpenTelemetryCollector`, and `deployment` mode, this tool will spin up a collector in the same namespace where this resource definition is created. When you delete the `OpenTelementryCollector` resource, collector will be also deleted. 
+When using resource `ext.appd.com/v1alpha1` - `OpenTelemetryCollector`, and `deployment` mode, this tool will spin up a collector in the same namespace where this resource definition is created. When you delete the `OpenTelemetryCollector` resource, collector will be also deleted. 
 
 Example:
 
