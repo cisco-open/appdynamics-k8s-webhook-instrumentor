@@ -29,7 +29,7 @@ $(CONTROLLER_GEN): $(LOCALBIN)
 .PHONY: manifests
 manifests: controller-gen
 	cd pkg && $(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=appd-aac webhook paths="./..." output:crd:artifacts:config=../config/crd/bases
-	cd pkg && $(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=appd-aac output:rbac:dir=../helm/templates paths="./..." output:crd:artifacts:config=../helm/templates object:headerFile=../license.txt
+	cd pkg && $(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=appd-aac output:rbac:dir=../helm/instrumentor/templates paths="./..." output:crd:artifacts:config=../helm/instrumentor/templates object:headerFile=../license.txt
 
 .PHONY: images
 images:
@@ -71,9 +71,9 @@ test:
 .PHONY: test-cleanup
 test-cleanup:
 	-helm uninstall --namespace mwh mwh 
-	-kubectl delete -f ./helm/templates/ext.appd.com_clusterinstrumentations.yaml
-	-kubectl delete -f ./helm/templates/ext.appd.com_instrumentations.yaml       
-	-kubectl delete -f ./helm/templates/ext.appd.com_opentelemetrycollectors.yaml
+	-kubectl delete -f ./helm/instrumentor/templates/ext.appd.com_clusterinstrumentations.yaml
+	-kubectl delete -f ./helm/instrumentor/templates/ext.appd.com_instrumentations.yaml       
+	-kubectl delete -f ./helm/instrumentor/templates/ext.appd.com_opentelemetrycollectors.yaml
 	-kubectl delete clusterrole webhook-instrumentor
 	-kubectl delete clusterrole appd-aac
 	-kubectl delete clusterrolebinding webhook-instrumentor
