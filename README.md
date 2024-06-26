@@ -219,6 +219,8 @@ As in case of AppDynamics application name, deployment environment value can be 
 
 For Kubernetes cluster name, it's a string constant.
 
+The section `splunkConfig` can be used with OpenTelemetry native agents, too.
+
 More examples and documentation is coming soon. 
 
 ## DB Agent support
