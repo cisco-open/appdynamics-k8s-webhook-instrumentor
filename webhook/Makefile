@@ -54,15 +54,15 @@ api-docs: crdoc
 
 .PHONY: install
 install:
-	cd helm && helm install --namespace $(HELM_DEPLOYMENT_NAMESPACE) $(HELM_DEPLOYMENT_NAME) . --values=$(HELM_VALUES_FILE)
+	helm install --namespace $(HELM_DEPLOYMENT_NAMESPACE) $(HELM_DEPLOYMENT_NAME) ./helm/instrumentor --values=$(HELM_VALUES_FILE)
 
 .PHONY: install-test
 install-test:
-	cd helm && helm install --namespace $(HELM_DEPLOYMENT_NAMESPACE) $(HELM_DEPLOYMENT_NAME) . --values=$(TEST_HELM_VALUES_TEMP)
+	helm install --namespace $(HELM_DEPLOYMENT_NAMESPACE) $(HELM_DEPLOYMENT_NAME) ./helm/instrumentor --values=$(TEST_HELM_VALUES_TEMP)
 
 .PHONY: remove
 remove:
-	-cd helm && helm delete --namespace $(HELM_DEPLOYMENT_NAMESPACE) $(HELM_DEPLOYMENT_NAME)
+	-helm delete --namespace $(HELM_DEPLOYMENT_NAMESPACE) $(HELM_DEPLOYMENT_NAME)
 
 .PHONY: test
 test:
