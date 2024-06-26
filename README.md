@@ -176,6 +176,49 @@ spec:
           level: "debug"
 ~~~
 
+## Using AppDynamics agents in Hybrid mode with Splunk Observability Cloud (aka O11y)
+
+The tool can ensure injection attributes specific to Splunk Observability Cloud into OpenTelemetry trace data, which is needed to data ingestion to work correctly and to correlate to container infrastructure telemetry.
+
+The Instrumentation and ClusterInstrumentation resources can include definition of where to take the deployment environment and Kubernetes cluster names from. 
+
+For example like this:
+~~~
+apiVersion: ext.appd.com/v1alpha1
+kind: Instrumentation
+metadata:
+  name: java-instrumentation
+spec:
+  name: java-instrumentation
+  priority: 2
+  matchRules:
+    labels:
+    - language: java
+    - otel: appd
+    podNameRegex: .*
+  injectionRules:
+    technology: java
+    image: appdynamics/java-agent:latest
+    # imagePullPolicy: Always
+    applicationNameSource: label
+    applicationNameLabel: appdApp
+    tierNameSource: auto
+    javaEnvVar: _JAVA_OPTIONS
+    javaCustomConfig: "-Dappdynamics.low.entropy=false"
+    # technology java + openTelemetryCollector -> use AppD hybrid agent
+    openTelemetryCollector: appd-splunk-traces
+    splunkConfig:
+      deploymentEnvironmentNameSource: label
+      deploymentEnvironmentNameLabel: appdApp
+      k8sClusterName: md-cluster
+~~~
+
+where `splunkConfig` section defines the rules. 
+
+As in case of AppDynamics application name, deployment environment value can be taken from label, annotation, namespace, namespace label or annotation, or via custom expression.
+
+For Kubernetes cluster name, it's a string constant.
+
 More examples and documentation is coming soon. 
 
 ## DB Agent support
