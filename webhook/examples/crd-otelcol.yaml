@@ -1,0 +1,48 @@
+apiVersion: ext.appd.com/v1alpha1
+kind: OpenTelemetryCollector
+metadata:
+  name: test
+spec:
+  replicas: 1
+  image: otel/opentelemetry-collector-contrib:latest
+  imagePullPolicy: Always
+  mode: deployment
+  config: |-
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+          http:
+    processors:
+      batch:
+      resource:
+        attributes:
+        - key: appdynamics.controller.account
+          action: upsert
+          value: "ceer"
+        - key: appdynamics.controller.host
+          action: upsert     
+          value: "ceer.saas.appdynamics.com"
+        - key: appdynamics.controller.port
+          action: upsert
+          value: 443
+    exporters:
+      logging:
+        loglevel: debug
+      # This part says that the opentelemetry collector will send data to OTIS pipeline for AppDynamicas CSaaS.
+      otlphttp:
+        tls:
+          insecure: true
+        endpoint: "https://<region>-sls-agent-api.saas.appdynamics.com"
+        headers: {"x-api-key": "<api-key?>"}
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [batch, resource]
+          exporters: [logging, otlphttp]
+      telemetry:
+        logs:
+          level: "debug"
+
+
