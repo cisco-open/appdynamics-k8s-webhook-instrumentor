@@ -33,8 +33,8 @@ spec:
       otlphttp:
         tls:
           insecure: true
-        endpoint: "https://<<region>>-sls-agent-api.saas.appdynamics.com"
-        headers: {"x-api-key": "<<api-key>>"}
+        endpoint: "https://fra-sls-agent-api.saas.appdynamics.com"
+        headers: {"x-api-key": "***REMOVED***"}
     service:
       pipelines:
         traces:
