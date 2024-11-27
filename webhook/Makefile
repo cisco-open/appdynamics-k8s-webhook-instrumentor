@@ -8,7 +8,7 @@ CRD_OPTIONS ?= "crd:generateEmbeddedObjectMeta=true"
 
 IMAGE_OWNER ?= chrlic
 IMAGE_NAME ?= appd-webhook-instrumentor-ng
-IMAGE_VERSION ?= 2.0.0
+IMAGE_VERSION ?= 2.0.1
 
 HELM_DEPLOYMENT_NAME ?= mwh
 HELM_DEPLOYMENT_NAMESPACE ?= mwh

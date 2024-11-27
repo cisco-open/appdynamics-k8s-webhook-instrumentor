@@ -108,6 +108,7 @@ func getJavaOptions(pod corev1.Pod, instrRules *v1alpha1.InstrumentationSpec) st
 	javaOpts += "-Dappdynamics.agent.accountAccessKey=$(APPDYNAMICS_AGENT_ACCOUNT_ACCESS_KEY) "
 	if reuseNodeNames(instrRules) {
 		javaOpts += "-Dappdynamics.agent.reuse.nodeName=true "
+		javaOpts += "-Dappdynamics.agent.reuse.nodeName.prefix=" + getTierName(pod, instrRules) + " "
 	}
 	javaOpts += "-Dappdynamics.socket.collection.bci.enable=true "
 	javaOpts += "-javaagent:/opt/appdynamics-java/javaagent.jar "
